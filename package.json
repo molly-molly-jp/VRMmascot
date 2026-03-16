@@ -1,0 +1,14 @@
+{
+  "name": "vrm-mascot",
+  "version": "1.0.0",
+  "description": "VRM Mascot - AI読み上げ口パクアプリ",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "dependencies": {
+    "electron": "^28.3.3",
+    "three": "^0.164.1",
+    "@pixiv/three-vrm": "^2.1.3"
+  }
+}

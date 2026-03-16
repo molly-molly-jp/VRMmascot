@@ -1,0 +1,17 @@
+# 依存パッケージ（npm installで再生成できる）
+node_modules/
+
+# VRMモデル（著作権・容量の関係でGit管理しない）
+assets/*.vrm
+
+# Electronビルド成果物
+dist/
+out/
+
+# ログ
+npm-debug.log*
+*.log
+
+# OS系
+.DS_Store
+Thumbs.db
