@@ -21,12 +21,19 @@ function createWindow() {
   });
 
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
-  // win.webContents.openDevTools({ mode: 'detach' });
+  win.webContents.openDevTools({ mode: 'detach' });
 
-  // setIgnoreMouseEvents は使わない。
-  // -webkit-app-region も使わない。
-  // 左クリックドラッグをメインプロセスで処理する。
+  // ── ナビゲーション・リロードを完全ブロック ──────────────────
+  // Enterキー等でページがリロードされるのをメインプロセスで防ぐ
+  win.webContents.on('will-navigate', (e) => {
+    e.preventDefault();
+    console.log('[main] will-navigate blocked');
+  });
+  win.webContents.on('will-redirect', (e) => {
+    e.preventDefault();
+  });
 
+  // ── ドラッグ移動 ─────────────────────────────────────────────
   let dragStart = null;
 
   ipcMain.on('drag-start', () => {

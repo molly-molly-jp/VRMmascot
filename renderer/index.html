@@ -15,26 +15,46 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { width: 100%; height: 100%; overflow: hidden; background: transparent; }
-    canvas { display: block; cursor: grab; }
+    canvas { display: block; cursor: grab; user-select: none; }
     canvas.dragging { cursor: grabbing; }
-    #hint {
-      position: fixed; bottom: 6px; left: 0; width: 100%;
-      text-align: center; font-size: 11px;
-      color: rgba(255,255,255,0.55); pointer-events: none;
-      text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+    #input-area {
+      position: fixed; bottom: 0; left: 0; width: 100%;
+      display: flex; gap: 4px; padding: 6px;
+      background: rgba(0,0,0,0.45); backdrop-filter: blur(4px);
     }
+    #text-input {
+      flex: 1; padding: 6px 10px;
+      border: 1px solid rgba(255,255,255,0.3); border-radius: 6px;
+      background: rgba(255,255,255,0.12); color: #fff;
+      font-size: 13px; outline: none; resize: none;
+      height: 32px; line-height: 20px; overflow: hidden; font-family: inherit;
+    }
+    #text-input:focus { border-color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.2); }
+    #send-btn {
+      padding: 6px 14px; border: none; border-radius: 6px;
+      background: rgba(100,160,255,0.8); color: #fff; font-size: 13px; cursor: pointer;
+    }
+    #send-btn:hover:not(:disabled) { background: rgba(100,160,255,1); }
+    #send-btn:disabled, #text-input:disabled { opacity: 0.5; }
     #status {
-      position: fixed; top: 50%; left: 0; width: 100%;
-      text-align: center; font-size: 13px;
-      color: rgba(255,255,255,0.9); pointer-events: none;
+      position: fixed; top: 50%; left: 0; width: 100%; text-align: center;
+      font-size: 13px; color: rgba(255,255,255,0.9); pointer-events: none;
       text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+    }
+    #hint {
+      position: fixed; top: 6px; left: 0; width: 100%; text-align: center;
+      font-size: 11px; color: rgba(255,255,255,0.4); pointer-events: none;
     }
   </style>
 </head>
 <body>
-  <canvas id="vrm-canvas"></canvas>
+  <canvas id="vrm-canvas" draggable="false"></canvas>
   <div id="status">モデルを読み込んでいます...</div>
-  <div id="hint">左クリックドラッグ: 移動 ／ Esc: 閉じる</div>
+  <div id="hint">左ドラッグ: 移動 ／ Esc: 閉じる</div>
+  <div id="input-area">
+    <textarea id="text-input" placeholder="テキストを入力してEnter..." rows="1"></textarea>
+    <button id="send-btn" type="button">送信</button>
+  </div>
 
   <script type="module" src="./index.js"></script>
 
@@ -43,30 +63,37 @@
     const canvas = document.getElementById('vrm-canvas');
     let dragging = false;
 
+    // HTML5ドラッグAPIを完全無効化（dragEventエラーの原因）
+    canvas.addEventListener('dragstart', (e) => e.preventDefault());
+    document.addEventListener('dragover',  (e) => e.preventDefault());
+    document.addEventListener('drop',      (e) => e.preventDefault());
+
     // 左クリックドラッグでウィンドウ移動
     canvas.addEventListener('mousedown', (e) => {
       if (e.button !== 0) return;
-      dragging = true;
-      canvas.classList.add('dragging');
-      api.dragStart();
-      e.preventDefault();
+      dragging = true; canvas.classList.add('dragging');
+      api.dragStart(); e.preventDefault();
     });
-
-    window.addEventListener('mousemove', () => {
-      if (dragging) api.dragMove();
-    });
-
+    window.addEventListener('mousemove', () => { if (dragging) api.dragMove(); });
     window.addEventListener('mouseup', (e) => {
       if (e.button !== 0 || !dragging) return;
-      dragging = false;
-      canvas.classList.remove('dragging');
-      api.dragEnd();
+      dragging = false; canvas.classList.remove('dragging'); api.dragEnd();
     });
 
-    // 右クリックメニューを無効化
-    window.addEventListener('contextmenu', (e) => e.preventDefault());
+    // textareaのEnterで送信（リロード防止）
+    document.getElementById('text-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof window._sendText === 'function') window._sendText();
+      }
+    });
 
-    // Escで閉じる
+    document.getElementById('send-btn').addEventListener('click', () => {
+      if (typeof window._sendText === 'function') window._sendText();
+    });
+
+    window.addEventListener('contextmenu', (e) => e.preventDefault());
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') api.closeWindow();
     });
