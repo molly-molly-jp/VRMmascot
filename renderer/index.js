@@ -1,12 +1,12 @@
 // renderer/index.js — エントリーポイント
 import { initVRM } from './vrm.js';
-import { speak } from './voicevox.js';
+import { speak, setAudioContext } from './voicevox.js';
+import { askAI } from './ai.js';
 
 const statusEl = document.getElementById('status');
 const inputEl  = document.getElementById('text-input');
 const sendBtn  = document.getElementById('send-btn');
 
-// 未処理のPromise拒否でレンダラーがクラッシュするのを防ぐ
 window.addEventListener('unhandledrejection', (e) => {
   console.error('[unhandledrejection]', e.reason);
   e.preventDefault();
@@ -23,19 +23,35 @@ async function main() {
 }
 
 async function sendText() {
-  const text = inputEl.value.trim();
-  if (!text || inputEl.disabled) return;
+  const userText = inputEl.value.trim();
+  if (!userText || inputEl.disabled) return;
 
   inputEl.value    = '';
   inputEl.disabled = true;
   sendBtn.disabled = true;
-  statusEl.textContent = '読み上げ中...';
 
   try {
-    await speak(text);
+    // AudioContext を初回ユーザー操作後に作成（AutoPlay制限対策）
+    if (!window._audioCtx) {
+      window._audioCtx = new AudioContext();
+      setAudioContext(window._audioCtx);
+    }
+    if (window._audioCtx.state === 'suspended') {
+      await window._audioCtx.resume();
+    }
+
+    // Step1: AIに質問
+    statusEl.textContent = '考え中...';
+    const aiText = await askAI(userText);
+
+    // Step2: AIの返答をVOICEVOXで読み上げ → 口パク
+    statusEl.textContent = '読み上げ中...';
+    await speak(aiText);
+
   } catch (err) {
-    console.error('VOICEVOX失敗:', err);
+    console.error('エラー:', err);
     statusEl.textContent = `エラー: ${err.message}`;
+    await new Promise(r => setTimeout(r, 3000)); // 3秒表示
   } finally {
     statusEl.textContent = '';
     inputEl.disabled = false;
@@ -44,7 +60,5 @@ async function sendText() {
   }
 }
 
-// インラインスクリプトから呼べるようにグローバル登録
 window._sendText = sendText;
-
 main();

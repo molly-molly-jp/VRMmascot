@@ -1,16 +1,13 @@
 // renderer/voicevox.js — VOICEVOX HTTP API クライアント
+import { setupAnalyserFromElement, resetLipSync } from './lipsync.js';
 
 const VOICEVOX_URL = 'http://localhost:50021';
 let speakerId = 1;
+let _audioCtx = null;
 
 export function setSpeakerId(id) { speakerId = id; }
+export function setAudioContext(ctx) { _audioCtx = ctx; }
 
-/**
- * テキストをVOICEVOXで音声合成して再生する
- * Phase2: <audio>要素で再生（シンプル・安定）
- * Phase3: AudioContextに切り替えてAnalyserNodeで口パク
- * @returns {Promise} 再生終了で resolve
- */
 export async function speak(text) {
   // Step1: audio_query
   const queryRes = await fetch(
@@ -27,14 +24,23 @@ export async function speak(text) {
   );
   if (!synthRes.ok) throw new Error(`synthesis失敗: ${synthRes.status}`);
   const blob = await synthRes.blob();
+  const url  = URL.createObjectURL(blob);
 
-  // Step3: <audio>要素で再生
-  const url = URL.createObjectURL(blob);
+  // Step3: <audio>要素で再生（安定）
   const audio = new Audio(url);
 
+  // Step4: AudioContextが渡されていればAnalyserをタップ（口パク用）
+  if (_audioCtx) {
+    setupAnalyserFromElement(_audioCtx, audio);
+  }
+
   return new Promise((resolve, reject) => {
-    audio.onended = () => { URL.revokeObjectURL(url); resolve(); };
-    audio.onerror = (e) => { URL.revokeObjectURL(url); reject(new Error('audio再生失敗')); };
+    audio.onended = () => {
+      URL.revokeObjectURL(url);
+      resetLipSync();
+      resolve();
+    };
+    audio.onerror = () => { URL.revokeObjectURL(url); reject(new Error('audio再生失敗')); };
     audio.play().catch(reject);
   });
 }
