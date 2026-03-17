@@ -1,15 +1,34 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  // ウィンドウ操作
+  // ── VRMウィンドウ用: ドラッグ移動 ──────────────────────────
   dragStart:   () => ipcRenderer.send('drag-start'),
   dragMove:    () => ipcRenderer.send('drag-move'),
   dragEnd:     () => ipcRenderer.send('drag-end'),
   closeWindow: () => ipcRenderer.send('window-close'),
 
-  // Phase 5: ショートカット読み上げ
-  onSpeakQueue: (callback) => ipcRenderer.on('speak-queue', (_, text) => callback(text)),
+  // ── VRMウィンドウ用: コマンド受信 ──────────────────────────
+  onSpeakQueue:  (cb) => ipcRenderer.on('speak-queue',     (_, t)  => cb(t)),
+  onSwitchGroup: (cb) => ipcRenderer.on('do-switch-group', (_, id) => cb(id)),
+  onSwitchModel: (cb) => ipcRenderer.on('do-switch-model', (_, p)  => cb(p)),
+  onSendText:    (cb) => ipcRenderer.on('do-send-text',    (_, t)  => cb(t)),
+  onClearQueue:  (cb) => ipcRenderer.on('do-clear-queue',  ()      => cb()),
 
-  // Phase 6: config.json の設定値を取得
+  // ── VRMウィンドウ用: ステータスをコントロールへ通知 ────────
+  sendStatus: (text) => ipcRenderer.send('vrm-status', text),
+
+  // ── コントロールウィンドウ用: コマンド送信 ──────────────────
+  switchGroup:   (groupId)   => ipcRenderer.send('ctrl-switch-group', groupId),
+  switchModel:   (modelPath) => ipcRenderer.send('ctrl-switch-model', modelPath),
+  sendTextToVRM: (text)      => ipcRenderer.send('ctrl-send-text', text),
+  clearQueue:    ()          => ipcRenderer.send('ctrl-clear-queue'),
+
+  // ── コントロールウィンドウ用: 自身の最前面トグル ────────────
+  toggleAlwaysOnTop: () => ipcRenderer.invoke('ctrl-toggle-always-on-top'),
+
+  // ── コントロールウィンドウ用: ステータス受信 ────────────────
+  onStatusUpdate: (cb) => ipcRenderer.on('status-update', (_, text) => cb(text)),
+
+  // ── 共通 ────────────────────────────────────────────────────
   getConfig: () => ipcRenderer.invoke('get-config'),
 });

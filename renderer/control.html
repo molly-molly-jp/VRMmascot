@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>VRM Mascot — コントロール</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', 'Yu Gothic UI', sans-serif;
+      font-size: 13px;
+      background: #1e1e2e;
+      color: #cdd6f4;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ── タイトルバー ── */
+    .titlebar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 12px;
+      background: #181825;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      flex-shrink: 0;
+    }
+    .titlebar-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: #888;
+      letter-spacing: 0.06em;
+    }
+
+    /* 最前面トグルボタン */
+    #pin-btn {
+      padding: 3px 10px;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 5px;
+      background: rgba(255,255,255,0.07);
+      color: #cdd6f4;
+      font-size: 11px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.12s, border-color 0.12s;
+      user-select: none;
+    }
+    #pin-btn:hover      { background: rgba(255,255,255,0.15); }
+    #pin-btn.on  {
+      background: #f5a623;
+      border-color: #f5a623;
+      color: #1e1e2e;
+      font-weight: 700;
+    }
+
+    /* ── セクション共通 ── */
+    .section {
+      padding: 8px 12px 7px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      flex-shrink: 0;
+    }
+    .section-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      color: #888;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+
+    /* ── ボタン行 ── */
+    .btn-row { display: flex; flex-wrap: wrap; gap: 5px; }
+    .btn {
+      padding: 4px 12px;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 6px;
+      background: rgba(255,255,255,0.07);
+      color: #cdd6f4;
+      font-size: 12px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .btn:hover        { background: rgba(255,255,255,0.15); }
+    .btn.active       { background: #4a9eff; border-color: #4a9eff; color: #fff; }
+    .btn.active-model { background: #3dcc91; border-color: #3dcc91; color: #fff; }
+    .btn.danger       { background: rgba(255,80,80,0.25); border-color: rgba(255,80,80,0.45); }
+    .btn.danger:hover { background: rgba(255,80,80,0.45); }
+    .btn:disabled     { opacity: 0.4; cursor: default; }
+
+    /* ── テキスト入力 ── */
+    .input-row { display: flex; gap: 6px; align-items: flex-end; }
+    #text-input {
+      flex: 1;
+      min-width: 0;
+      padding: 6px 10px;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 6px;
+      background: rgba(255,255,255,0.07);
+      color: #cdd6f4;
+      font-size: 13px;
+      outline: none;
+      resize: none;
+      font-family: inherit;
+      line-height: 1.4;
+    }
+    #text-input:focus    { border-color: #4a9eff; }
+    #text-input:disabled { opacity: 0.4; }
+    #send-btn { flex-shrink: 0; }
+
+    /* ── ステータス ── */
+    #status-area {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px 12px;
+      font-size: 13px;
+      color: #a6adc8;
+      min-height: 32px;
+    }
+    #status-area.busy  { color: #f5c842; }
+    #status-area.error { color: #f38ba8; }
+
+    /* ── ヒント ── */
+    .hint {
+      padding: 5px 12px 7px;
+      font-size: 11px;
+      color: #45475a;
+      line-height: 1.6;
+      flex-shrink: 0;
+    }
+    kbd {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 3px;
+      padding: 1px 5px;
+      font-size: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- タイトルバー（最前面ボタン） -->
+  <div class="titlebar">
+    <span class="titlebar-title">VRM MASCOT CONTROL</span>
+    <button id="pin-btn" class="on" title="VRMウィンドウの最前面表示をオン/オフ">
+      📌 最前面 ON
+    </button>
+  </div>
+
+  <!-- グループ切り替え -->
+  <div class="section">
+    <div class="section-label">グループ（口パク入力）</div>
+    <div class="btn-row" id="group-bar"></div>
+  </div>
+
+  <!-- モデル切り替え -->
+  <div class="section">
+    <div class="section-label">モデル</div>
+    <div class="btn-row" id="model-bar"></div>
+  </div>
+
+  <!-- テキスト入力 -->
+  <div class="section">
+    <div class="section-label">AI会話 / テキスト読み上げ</div>
+    <div class="input-row">
+      <textarea id="text-input" rows="3" placeholder="Ctrl+Enter で送信…"></textarea>
+      <button id="send-btn" class="btn">送信</button>
+    </div>
+  </div>
+
+  <!-- 停止ボタン -->
+  <div class="section" style="border-bottom:none; padding-top:7px;">
+    <div class="btn-row">
+      <button id="clear-btn" class="btn danger">⏹ 読み上げ停止</button>
+    </div>
+  </div>
+
+  <!-- ステータス -->
+  <div id="status-area">待機中</div>
+
+  <!-- ヒント -->
+  <div class="hint">
+    <kbd>Ctrl+Shift+R</kbd> クリップボード読み上げ &nbsp;
+    <kbd>Ctrl+Enter</kbd> テキスト送信
+  </div>
+
+  <script type="module" src="./control.js"></script>
+</body>
+</html>

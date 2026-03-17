@@ -2,9 +2,26 @@
 import { setupAnalyserFromElement, resetLipSync } from './lipsync.js';
 
 const VOICEVOX_URL = 'http://localhost:50021';
-let speakerId = 1;
+let speakerId = 0; // 0: 四国めたん（あまあま）
+
+/** 現在再生中のAudio要素（停止用） */
+let currentAudio = null;
 
 export function setSpeakerId(id) { speakerId = id; }
+
+/**
+ * 現在再生中の音声を即座に停止する
+ * （グループ・モデル切り替え時に呼ぶ）
+ */
+export function stopCurrentSpeech() {
+  if (currentAudio) {
+    currentAudio.pause();
+    try { currentAudio.src = ''; } catch (_) {}
+    currentAudio = null;
+    resetLipSync();
+    console.log('[voicevox] 音声停止');
+  }
+}
 
 export async function speak(text, audioCtx) {
   // audio_query
@@ -25,18 +42,24 @@ export async function speak(text, audioCtx) {
   const url  = URL.createObjectURL(blob);
 
   const audio = new Audio(url);
+  currentAudio = audio;
 
-  // audioCtxが渡されていればAnalyserをセットアップ（口パク用）
   if (audioCtx) {
     setupAnalyserFromElement(audioCtx, audio);
-    console.log('[voicevox] AnalyserNode セットアップ完了');
-  } else {
-    console.warn('[voicevox] audioCtxが未設定のため口パクなし');
   }
 
   return new Promise((resolve, reject) => {
-    audio.onended = () => { URL.revokeObjectURL(url); resetLipSync(); resolve(); };
-    audio.onerror = () => { URL.revokeObjectURL(url); reject(new Error('audio再生失敗')); };
+    audio.onended = () => {
+      currentAudio = null;
+      URL.revokeObjectURL(url);
+      resetLipSync();
+      resolve();
+    };
+    audio.onerror = () => {
+      currentAudio = null;
+      URL.revokeObjectURL(url);
+      reject(new Error('audio再生失敗'));
+    };
     audio.play().catch(reject);
   });
 }
