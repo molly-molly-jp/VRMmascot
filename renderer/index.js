@@ -12,6 +12,53 @@ window.addEventListener('unhandledrejection', (e) => {
   e.preventDefault();
 });
 
+// ── AudioContext（speak/口パクで共用） ────────────────────────
+function getAudioCtx() {
+  if (!window._audioCtx) {
+    window._audioCtx = new AudioContext();
+    setAudioContext(window._audioCtx);
+  }
+  return window._audioCtx;
+}
+
+// ── 読み上げキュー（Phase5） ──────────────────────────────────
+const speakQueue  = [];
+let   isSpeaking  = false;
+
+async function processQueue() {
+  if (isSpeaking || speakQueue.length === 0) return;
+  isSpeaking = true;
+
+  const text = speakQueue.shift();
+  console.log('[queue] 読み上げ開始:', text.slice(0, 40));
+  statusEl.textContent = '読み上げ中...';
+
+  try {
+    const ctx = getAudioCtx();
+    if (ctx.state === 'suspended') await ctx.resume();
+    await speak(text);
+  } catch (err) {
+    console.error('[queue] speak失敗:', err);
+  } finally {
+    isSpeaking = false;
+    statusEl.textContent = speakQueue.length > 0 ? `キュー残り: ${speakQueue.length}件` : '';
+    processQueue(); // 次のキューを処理
+  }
+}
+
+function enqueue(text) {
+  speakQueue.push(text);
+  console.log(`[queue] 追加: ${speakQueue.length}件待機中`);
+  processQueue();
+}
+
+// ── Phase5: メインプロセスからのキュー追加を受け取る ────────────
+window.electronAPI.onSpeakQueue((text) => {
+  console.log('[Phase5] ショートカット受信:', text.slice(0, 40));
+  enqueue(text);
+});
+
+// ── VRM初期化 ─────────────────────────────────────────────────
 async function main() {
   try {
     await initVRM('vrm-canvas');
@@ -22,6 +69,7 @@ async function main() {
   }
 }
 
+// ── テキスト入力からAI経由で読み上げ（Phase4フロー） ───────────
 async function sendText() {
   const userText = inputEl.value.trim();
   if (!userText || inputEl.disabled) return;
@@ -31,29 +79,20 @@ async function sendText() {
   sendBtn.disabled = true;
 
   try {
-    // AudioContext を初回ユーザー操作後に作成（AutoPlay制限対策）
-    if (!window._audioCtx) {
-      window._audioCtx = new AudioContext();
-      setAudioContext(window._audioCtx);
-    }
-    if (window._audioCtx.state === 'suspended') {
-      await window._audioCtx.resume();
-    }
+    const ctx = getAudioCtx();
+    if (ctx.state === 'suspended') await ctx.resume();
 
-    // Step1: AIに質問
     statusEl.textContent = '考え中...';
     const aiText = await askAI(userText);
 
-    // Step2: AIの返答をVOICEVOXで読み上げ → 口パク
-    statusEl.textContent = '読み上げ中...';
-    await speak(aiText);
-
+    // AIの返答をキューに追加（他の読み上げと順番を守る）
+    enqueue(aiText);
   } catch (err) {
     console.error('エラー:', err);
     statusEl.textContent = `エラー: ${err.message}`;
-    await new Promise(r => setTimeout(r, 3000)); // 3秒表示
-  } finally {
+    await new Promise(r => setTimeout(r, 3000));
     statusEl.textContent = '';
+  } finally {
     inputEl.disabled = false;
     sendBtn.disabled = false;
     inputEl.focus();

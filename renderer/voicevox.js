@@ -2,7 +2,7 @@
 import { setupAnalyserFromElement, resetLipSync } from './lipsync.js';
 
 const VOICEVOX_URL = 'http://localhost:50021';
-let speakerId = 1;
+let speakerId = 4;
 let _audioCtx = null;
 
 export function setSpeakerId(id) { speakerId = id; }
