@@ -7,6 +7,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   dragEnd:     () => ipcRenderer.send('drag-end'),
   closeWindow: () => ipcRenderer.send('window-close'),
 
+  // ── VRMウィンドウ用: 透過ヒットテスト ──────────────────────
+  // true  = 透明ピクセル上 → マウスイベントを後ろに素通し
+  // false = 不透明ピクセル上 → 通常通り受け取る
+  setIgnoreMouseEvents: (ignore) => ipcRenderer.send('set-ignore-mouse-events', ignore),
+
   // ── VRMウィンドウ用: コマンド受信 ──────────────────────────
   onSpeakQueue:  (cb) => ipcRenderer.on('speak-queue',     (_, t)  => cb(t)),
   onSwitchGroup: (cb) => ipcRenderer.on('do-switch-group', (_, id) => cb(id)),

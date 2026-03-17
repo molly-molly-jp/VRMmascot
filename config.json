@@ -6,6 +6,7 @@
       "id": "A",
       "label": "Claude Desktop",
       "lipSyncSource": "vbcable",
+      "speakerId": 14,
       "currentModel": 0,
       "models": [
         { "label": "Kyoko_Lwear", "path": "assets/groupA/Kyoko_Lwear.vrm" },
@@ -16,6 +17,7 @@
       "id": "B",
       "label": "Web AI",
       "lipSyncSource": "clipboard",
+      "speakerId": 0,
       "currentModel": 0,
       "models": [
         { "label": "Marycia",  "path": "assets/groupB/Marycia.vrm" },

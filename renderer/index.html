@@ -31,29 +31,77 @@
 <body>
   <canvas id="vrm-canvas" draggable="false"></canvas>
   <script type="module" src="./index.js"></script>
+
   <script>
     const api    = window.electronAPI;
     const canvas = document.getElementById('vrm-canvas');
     let dragging = false;
 
-    canvas.addEventListener('dragstart', (e) => e.preventDefault());
-    document.addEventListener('dragover', (e) => e.preventDefault());
-    document.addEventListener('drop',     (e) => e.preventDefault());
+    // ── ヒットテスト用ユーティリティ ────────────────────────
+    function isOpaqueAt(x, y) {
+      const fn = window._getAlphaAtPixel;
+      if (typeof fn !== 'function') return false;
+      return fn(x, y) >= 10; // 10以上を「モデルあり」とみなす
+    }
 
+    // ── ignore状態の管理 ─────────────────────────────────────
+    // 状態を一元管理して無駄なIPC送信を防ぐ
+    let currentIgnore = null;
+    function setIgnore(ignore) {
+      if (ignore === currentIgnore) return;
+      currentIgnore = ignore;
+      api.setIgnoreMouseEvents(ignore);
+    }
+
+    // 起動時: 全面クリックスルー（forward:trueはmain.js側で設定済み）
+    setIgnore(true);
+
+    // ── mousemove: ヒットテストでignoreを切り替える ──────────
+    //
+    // ポイント: setIgnoreMouseEvents(true, {forward:true}) の状態でも
+    // mousemove だけは届くので、透明/不透明を毎フレーム判定できる。
+    //
+    // ドラッグ中は dragMove() だけ呼ぶ。
+    // setIgnoreMouseEvents は触らない（拡大バグを防ぐため）。
+    window.addEventListener('mousemove', (e) => {
+      if (dragging) {
+        api.dragMove();
+        return;
+      }
+      setIgnore(!isOpaqueAt(e.clientX, e.clientY));
+    });
+
+    // ── mousedown: モデルを掴む ──────────────────────────────
     document.addEventListener('mousedown', (e) => {
       if (e.button !== 0) return;
       dragging = true;
       canvas.classList.add('dragging');
+      // ドラッグ中は確実にイベントを受け取る
+      setIgnore(false);
       api.dragStart();
       e.preventDefault();
     });
-    window.addEventListener('mousemove', () => { if (dragging) api.dragMove(); });
+
+    // ── mouseup: ドラッグ終了 → ignore を透明状態に戻す ─────
+    //
+    // ここが重要:
+    // mouseup 後に ignore=true を明示的に設定し直す。
+    // こうしないと「透明領域の上で drag=false」のまま ignore=false が残り、
+    // 後ろのウィンドウを操作できなくなる。
+    // 次の mousemove でヒットテストが走り、モデルの上なら false に戻る。
     window.addEventListener('mouseup', (e) => {
       if (e.button !== 0 || !dragging) return;
       dragging = false;
       canvas.classList.remove('dragging');
       api.dragEnd();
+      // ignore をリセット: 次の mousemove でヒットテストが再評価する
+      currentIgnore = null;
+      api.setIgnoreMouseEvents(true);
     });
+
+    canvas.addEventListener('dragstart', (e) => e.preventDefault());
+    document.addEventListener('dragover', (e) => e.preventDefault());
+    document.addEventListener('drop',     (e) => e.preventDefault());
 
     window.addEventListener('contextmenu', (e) => e.preventDefault());
     window.addEventListener('keydown', (e) => {

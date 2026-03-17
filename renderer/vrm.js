@@ -1,5 +1,4 @@
 // renderer/vrm.js  — Three.js + @pixiv/three-vrm によるVRM表示
-// Phase 7: 複数VRM対応（遅延ロード方式）
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
@@ -8,12 +7,10 @@ import { getLipSyncValue } from './lipsync.js';
 export let currentVRM = null;
 let lipSyncExpressionName = null;
 
-// Three.js共有オブジェクト
 let renderer, scene, camera;
 const loader = new GLTFLoader();
 loader.register((parser) => new VRMLoaderPlugin(parser));
 
-// ベースURL（VRMパス解決用）
 function getBaseUrl() {
   return window.location.href.replace(/\/renderer\/[^/]+$/, '');
 }
@@ -31,21 +28,29 @@ function resolveLipSyncExpression(vrm) {
   return null;
 }
 
-// Three.jsシーン初期化（一度だけ呼ぶ）
 function initScene(canvas) {
   const W = window.innerWidth  || 400;
   const H = window.innerHeight || 600;
-  canvas.width  = W;
-  canvas.height = H;
+  const dpr = window.devicePixelRatio || 1;
 
-  // ── position:absolute を使う ──────────────────────────────
-  // Electronの transparent:true + alwaysOnTop:true 環境で
-  // setPosition() IPC呼び出し中に position:fixed が画面座標基準に
-  // なってしまうバグを回避するため、absolute で統一する。
-  canvas.style.cssText = `position:absolute; top:0; left:0; width:${W}px; height:${H}px; z-index:0;`;
+  // バッファサイズ（実ピクセル）
+  canvas.width  = Math.round(W * dpr);
+  canvas.height = Math.round(H * dpr);
 
-  renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-  renderer.setPixelRatio(window.devicePixelRatio);
+  // ── CSSサイズは固定px ──────────────────────────────────────
+  // width:100% にするとドラッグ中の setPosition() IPC で
+  // Chromium がレイアウト再計算して一瞬膨張するバグが起きる。
+  // UIなしウィンドウなので固定pxで問題ない。
+  canvas.style.cssText =
+    `position:absolute; top:0; left:0; width:${W}px; height:${H}px; z-index:0;`;
+
+  renderer = new THREE.WebGLRenderer({
+    canvas,
+    alpha: true,
+    antialias: true,
+    preserveDrawingBuffer: true, // readPixels でアルファ値を読むために必要
+  });
+  renderer.setPixelRatio(dpr);
   renderer.setSize(W, H, false);
   renderer.setClearColor(0x000000, 0);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -61,35 +66,31 @@ function initScene(canvas) {
   camera.lookAt(0, 1.3, 0);
 }
 
-// VRMファイルをロードしてシーンに追加
 async function loadVRM(vrmPath) {
   const vrmUrl = getBaseUrl() + '/' + vrmPath;
   console.log('[VRM] Loading:', vrmUrl);
   let gltf;
   try { gltf = await loader.loadAsync(vrmUrl); }
   catch (e) { throw new Error(`VRM読み込み失敗: ${e.message}`); }
-
   const vrm = gltf.userData.vrm;
   if (!vrm) throw new Error('gltf.userData.vrm が undefined');
   if (vrm.meta?.metaVersion === '0') VRMUtils.rotateVRM0(vrm);
   return vrm;
 }
 
-// カメラをモデルに合わせて調整
 function adjustCamera(vrm) {
   const box    = new THREE.Box3().setFromObject(vrm.scene);
   const size   = box.getSize(new THREE.Vector3());
   const center = box.getCenter(new THREE.Vector3());
   const torsoY = center.y + size.y * 0.1;
-  const W = renderer.domElement.width;
-  const H = renderer.domElement.height;
+  const W = window.innerWidth;
+  const H = window.innerHeight;
   camera.position.set(center.x, torsoY, size.y * 1.8);
   camera.lookAt(center.x, torsoY, 0);
   camera.aspect = W / H;
   camera.updateProjectionMatrix();
 }
 
-// アニメーションループ（一度だけ起動）
 let animLoopStarted = false;
 const clock = new THREE.Clock();
 
@@ -101,8 +102,7 @@ function startAnimLoop() {
     const delta = clock.getDelta();
     if (currentVRM) {
       if (lipSyncExpressionName && currentVRM.expressionManager) {
-        const lipValue = getLipSyncValue();
-        currentVRM.expressionManager.setValue(lipSyncExpressionName, lipValue);
+        currentVRM.expressionManager.setValue(lipSyncExpressionName, getLipSyncValue());
       }
       currentVRM.update(delta);
     }
@@ -111,15 +111,30 @@ function startAnimLoop() {
   animate();
 }
 
+// ── ヒットテスト: 指定CSS座標のアルファ値をWebGLから読む ─────────
+// canvas.getContext('2d') はWebGLキャンバスに使えないため
+// WebGL の readPixels を使う（preserveDrawingBuffer:true が必須）
+export function getAlphaAtPixel(clientX, clientY) {
+  if (!renderer) return 0;
+  const gl  = renderer.getContext();
+  const dpr = window.devicePixelRatio || 1;
+  const px  = Math.floor(clientX * dpr);
+  const py  = Math.floor(renderer.domElement.height - clientY * dpr); // Y軸フリップ
+  if (px < 0 || py < 0 ||
+      px >= renderer.domElement.width ||
+      py >= renderer.domElement.height) return 0;
+  const buf = new Uint8Array(4);
+  gl.readPixels(px, py, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+  return buf[3]; // 0=透明 〜 255=不透明
+}
+
 // ── 公開API ───────────────────────────────────────────────────
 
 export async function initVRM(canvasId, vrmPath) {
   const canvas = document.getElementById(canvasId);
   if (!canvas) throw new Error(`canvas#${canvasId} が見つかりません`);
   initScene(canvas);
-
-  const path = vrmPath || 'assets/model.vrm';
-  const vrm = await loadVRM(path);
+  const vrm = await loadVRM(vrmPath || 'assets/model.vrm');
   scene.add(vrm.scene);
   currentVRM = vrm;
   lipSyncExpressionName = resolveLipSyncExpression(vrm);

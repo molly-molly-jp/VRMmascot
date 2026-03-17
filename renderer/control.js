@@ -1,4 +1,8 @@
 // renderer/control.js — コントロールパネル専用ロジック
+//
+// ※ type="module" スクリプトは DOMContentLoaded より後に実行されるため
+//   addEventListener('DOMContentLoaded', ...) は不要（むしろ発火しない）。
+//   モジュールトップレベルに直接処理を書く。
 
 const api       = window.electronAPI;
 const groupBar  = document.getElementById('group-bar');
@@ -9,9 +13,13 @@ const clearBtn  = document.getElementById('clear-btn');
 const pinBtn    = document.getElementById('pin-btn');
 const statusEl  = document.getElementById('status-area');
 
+if (!api) {
+  console.error('[control] window.electronAPI が未定義です');
+}
+
 let configData      = null;
 let currentGroupIdx = 0;
-let alwaysOnTop     = false; // 起動時はOFF（main.jsのctrlWin初期値に合わせる）
+let alwaysOnTop     = false;
 
 // ─── ステータス表示 ──────────────────────────────────────────
 function setStatus(text) {
@@ -20,9 +28,10 @@ function setStatus(text) {
   if (!text || text === '待機中') return;
   statusEl.className = text.startsWith('エラー') ? 'error' : 'busy';
 }
+
 api.onStatusUpdate((text) => setStatus(text));
 
-// ─── 最前面トグル（コントロールウィンドウ自身） ──────────────
+// ─── 最前面トグル ────────────────────────────────────────────
 function updatePinBtn() {
   if (alwaysOnTop) {
     pinBtn.textContent = '📌 最前面 ON';
@@ -37,8 +46,6 @@ pinBtn.addEventListener('click', async () => {
   alwaysOnTop = await api.toggleAlwaysOnTop();
   updatePinBtn();
 });
-
-// 初期表示をOFFに揃える
 updatePinBtn();
 
 // ─── グループボタン描画 ──────────────────────────────────────
@@ -59,6 +66,7 @@ function renderGroupButtons() {
     });
     groupBar.appendChild(btn);
   });
+  console.log('[control] グループボタン描画:', configData.groups.length, '件');
 }
 
 // ─── モデルボタン描画 ────────────────────────────────────────
@@ -77,6 +85,7 @@ function renderModelButtons() {
     });
     modelBar.appendChild(btn);
   });
+  console.log('[control] モデルボタン描画:', group.models.length, '件');
 }
 
 // ─── テキスト送信 ────────────────────────────────────────────
@@ -110,10 +119,20 @@ clearBtn.addEventListener('click', () => {
 
 // ─── 起動 ────────────────────────────────────────────────────
 async function main() {
-  configData = await api.getConfig();
-  renderGroupButtons();
-  renderModelButtons();
-  textInput.focus();
+  try {
+    configData = await api.getConfig();
+    console.log('[control] config取得成功');
+    if (!configData?.groups) {
+      setStatus('エラー: config.json にgroupsがありません');
+      return;
+    }
+    renderGroupButtons();
+    renderModelButtons();
+    textInput.focus();
+  } catch (err) {
+    console.error('[control] 起動エラー:', err);
+    setStatus(`エラー: ${err.message}`);
+  }
 }
 
 main();

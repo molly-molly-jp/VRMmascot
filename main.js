@@ -8,14 +8,15 @@ let ctrlWin;
 function loadConfig() {
   try {
     const configPath = path.join(__dirname, 'config.json');
-    return JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    console.log('[main] config読み込み成功 groups:', config.groups?.length);
+    return config;
   } catch (e) {
-    console.warn('[main] config.json読み込み失敗:', e.message);
-    return { shortcutKey: 'Ctrl+Shift+R' };
+    console.error('[main] config.json読み込み失敗:', e.message);
+    return { shortcutKey: 'Ctrl+Shift+R', groups: [] };
   }
 }
 
-// ── VRMウィンドウ ───────────────────────────────────────────────
 function createVRMWindow() {
   vrmWin = new BrowserWindow({
     width: 400,
@@ -36,7 +37,7 @@ function createVRMWindow() {
   vrmWin.webContents.on('will-navigate', (e) => e.preventDefault());
   vrmWin.webContents.on('will-redirect',  (e) => e.preventDefault());
 
-  let dragStart   = null;
+  let dragStart    = null;
   let lastMoveTime = 0;
   ipcMain.on('drag-start', () => {
     dragStart = { cursor: screen.getCursorScreenPoint(), win: vrmWin.getPosition() };
@@ -55,13 +56,17 @@ function createVRMWindow() {
   ipcMain.on('drag-end',     () => { dragStart = null; });
   ipcMain.on('window-close', () => vrmWin.close());
 
+  ipcMain.on('set-ignore-mouse-events', (_, ignore) => {
+    if (!vrmWin || vrmWin.isDestroyed()) return;
+    vrmWin.setIgnoreMouseEvents(ignore, { forward: true });
+  });
+
   ipcMain.on('vrm-status', (_, text) => {
     if (ctrlWin && !ctrlWin.isDestroyed())
       ctrlWin.webContents.send('status-update', text);
   });
 }
 
-// ── コントロールウィンドウ ─────────────────────────────────────
 function createControlWindow() {
   const displays = screen.getAllDisplays();
   const target   = displays.length > 1 ? displays[1] : displays[0];
@@ -72,7 +77,7 @@ function createControlWindow() {
     x: target.bounds.x + 20,
     y: target.bounds.y + 20,
     resizable: true,
-    alwaysOnTop: false,   // 起動時は最前面OFF
+    alwaysOnTop: false,
     title: 'VRM Mascot — コントロール',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -85,9 +90,15 @@ function createControlWindow() {
   ctrlWin.on('close', (e) => { e.preventDefault(); ctrlWin.hide(); });
 }
 
-// ── IPC ──────────────────────────────────────────────────────
 function setupIPC(config) {
-  ipcMain.handle('get-config', () => config);
+  // ── get-config は既に登録済みの場合は登録しない ──────────────
+  // ウィンドウreload時に二重登録されるのを防ぐ
+  if (!ipcMain.listenerCount('get-config-handled')) {
+    ipcMain.handle('get-config', () => {
+      console.log('[main] get-config 呼ばれた groups:', config.groups?.length);
+      return config;
+    });
+  }
 
   ipcMain.on('ctrl-switch-group', (_, id) => {
     if (vrmWin && !vrmWin.isDestroyed()) vrmWin.webContents.send('do-switch-group', id);
@@ -102,17 +113,14 @@ function setupIPC(config) {
     if (vrmWin && !vrmWin.isDestroyed()) vrmWin.webContents.send('do-clear-queue');
   });
 
-  // コントロールウィンドウ自身の最前面トグル → 現在の状態を返す
   ipcMain.handle('ctrl-toggle-always-on-top', () => {
     if (!ctrlWin || ctrlWin.isDestroyed()) return false;
     const next = !ctrlWin.isAlwaysOnTop();
     ctrlWin.setAlwaysOnTop(next);
-    console.log('[main] ctrl alwaysOnTop:', next);
     return next;
   });
 }
 
-// ── ショートカット ────────────────────────────────────────────
 function setupShortcut(config) {
   const key = config.shortcutKey || 'Ctrl+Shift+R';
   const ok  = globalShortcut.register(key, () => {
@@ -123,13 +131,18 @@ function setupShortcut(config) {
   console.log(ok ? `[main] ショートカット登録: ${key}` : `[main] ショートカット登録失敗: ${key}`);
 }
 
-// ── 起動 ─────────────────────────────────────────────────────
 app.whenReady().then(() => {
   const config = loadConfig();
-  createVRMWindow();
-  createControlWindow();
+
+  // ── IPCハンドラを先に登録してからウィンドウを開く ──────────
+  // ウィンドウのJSが invoke('get-config') を呼ぶ前に
+  // ハンドラが存在している必要がある
   setupIPC(config);
   setupShortcut(config);
+
+  createVRMWindow();
+  createControlWindow();
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createVRMWindow();

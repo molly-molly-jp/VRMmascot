@@ -1,0 +1,28 @@
+{
+  "shortcutKey": "Ctrl+Q",
+  "lipSyncDevice": "ステレオ ミキサー (Realtek(R) Audio)",
+  "groups": [
+    {
+      "id": "A",
+      "label": "Claude Desktop",
+      "lipSyncSource": "vbcable",
+      "speakerId": 14,
+      "currentModel": 0,
+      "models": [
+        { "label": "Kyoko_Lwear", "path": "assets/groupA/Kyoko_Lwear.vrm" },
+        { "label": "Kyoko",       "path": "assets/groupA/Kyoko.vrm" }
+      ]
+    },
+    {
+      "id": "B",
+      "label": "Web AI",
+      "lipSyncSource": "clipboard",
+      "speakerId": 0,
+      "currentModel": 0,
+      "models": [
+        { "label": "Marycia",  "path": "assets/groupB/Marycia.vrm" },
+        { "label": "Marcia2P", "path": "assets/groupB/Marcia2P.vrm" }
+      ]
+    }
+  ]
+}
