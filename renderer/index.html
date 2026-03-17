@@ -18,9 +18,9 @@
     canvas { display: block; cursor: grab; user-select: none; }
     canvas.dragging { cursor: grabbing; }
     #input-area {
-      position: fixed; bottom: 0; left: 0; width: 100%;
+      position: fixed;
       display: flex; gap: 4px; padding: 6px;
-      background: rgba(0,0,0,0.45); backdrop-filter: blur(4px);
+      background: rgba(0,0,0,0.5);
     }
     #text-input {
       flex: 1; padding: 6px 10px;
@@ -29,28 +29,24 @@
       font-size: 13px; outline: none; resize: none;
       height: 32px; line-height: 20px; overflow: hidden; font-family: inherit;
     }
-    #text-input:focus { border-color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.2); }
+    #text-input:focus { border-color: rgba(255,255,255,0.7); }
     #send-btn {
       padding: 6px 14px; border: none; border-radius: 6px;
-      background: rgba(100,160,255,0.8); color: #fff; font-size: 13px; cursor: pointer;
+      background: rgba(100,160,255,0.85); color: #fff;
+      font-size: 13px; cursor: pointer; white-space: nowrap;
     }
-    #send-btn:hover:not(:disabled) { background: rgba(100,160,255,1); }
     #send-btn:disabled, #text-input:disabled { opacity: 0.5; }
     #status {
-      position: fixed; top: 50%; left: 0; width: 100%; text-align: center;
-      font-size: 13px; color: rgba(255,255,255,0.9); pointer-events: none;
+      position: fixed;
+      width: 100%; text-align: center; font-size: 13px;
+      color: rgba(255,255,255,0.9); pointer-events: none;
       text-shadow: 0 1px 4px rgba(0,0,0,0.9);
-    }
-    #hint {
-      position: fixed; top: 6px; left: 0; width: 100%; text-align: center;
-      font-size: 11px; color: rgba(255,255,255,0.4); pointer-events: none;
     }
   </style>
 </head>
 <body>
   <canvas id="vrm-canvas" draggable="false"></canvas>
   <div id="status">モデルを読み込んでいます...</div>
-  <div id="hint">左ドラッグ: 移動 ／ Esc: 閉じる</div>
   <div id="input-area">
     <textarea id="text-input" placeholder="テキストを入力してEnter..." rows="1"></textarea>
     <button id="send-btn" type="button">送信</button>
@@ -63,12 +59,22 @@
     const canvas = document.getElementById('vrm-canvas');
     let dragging = false;
 
-    // HTML5ドラッグAPIを完全無効化（dragEventエラーの原因）
+    function fixUILayout() {
+      const W = window.innerWidth;
+      const H = window.innerHeight;
+      const inputArea = document.getElementById('input-area');
+      inputArea.style.left  = '0px';
+      inputArea.style.top   = (H - 44) + 'px';
+      inputArea.style.width = W + 'px';
+      document.getElementById('status').style.cssText =
+        `top:${Math.floor(H/2)}px; left:0px;`;
+    }
+    fixUILayout();
+
     canvas.addEventListener('dragstart', (e) => e.preventDefault());
     document.addEventListener('dragover',  (e) => e.preventDefault());
     document.addEventListener('drop',      (e) => e.preventDefault());
 
-    // 左クリックドラッグでウィンドウ移動
     canvas.addEventListener('mousedown', (e) => {
       if (e.button !== 0) return;
       dragging = true; canvas.classList.add('dragging');
@@ -79,20 +85,15 @@
       if (e.button !== 0 || !dragging) return;
       dragging = false; canvas.classList.remove('dragging'); api.dragEnd();
     });
-
-    // textareaのEnterで送信（リロード防止）
     document.getElementById('text-input').addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
-        e.preventDefault();
-        e.stopPropagation();
+        e.preventDefault(); e.stopPropagation();
         if (typeof window._sendText === 'function') window._sendText();
       }
     });
-
     document.getElementById('send-btn').addEventListener('click', () => {
       if (typeof window._sendText === 'function') window._sendText();
     });
-
     window.addEventListener('contextmenu', (e) => e.preventDefault());
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') api.closeWindow();

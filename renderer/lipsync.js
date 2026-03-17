@@ -1,45 +1,82 @@
-// renderer/lipsync.js — Web Audio API を使ったリアルタイム口パク制御
+// renderer/lipsync.js — Web Audio API 口パク制御
+// Phase 3: MediaElementAudioSourceNode（VOICEVOX再生時）
+// Phase 6: getUserMedia ストリーム（VB-Cableループバック）
 
-let analyser  = null;
-let dataArray = null;
+// Phase 3用
+let voicevoxAnalyser  = null;
+let voicevoxDataArray = null;
 
-/**
- * <audio>要素からAnalyserNodeをセットアップ
- * MediaElementAudioSourceNode を使うことでデコード不要・安定動作
- */
 export function setupAnalyserFromElement(audioCtx, audioElement) {
-  analyser = audioCtx.createAnalyser();
-  analyser.fftSize = 256;
-  analyser.smoothingTimeConstant = 0.6;
-
+  voicevoxAnalyser = audioCtx.createAnalyser();
+  voicevoxAnalyser.fftSize = 256;
+  voicevoxAnalyser.smoothingTimeConstant = 0.6;
   const source = audioCtx.createMediaElementSource(audioElement);
-  // audio要素 → analyser → destination
-  source.connect(analyser);
-  analyser.connect(audioCtx.destination);
-
-  dataArray = new Uint8Array(analyser.frequencyBinCount);
+  source.connect(voicevoxAnalyser);
+  voicevoxAnalyser.connect(audioCtx.destination);
+  voicevoxDataArray = new Uint8Array(voicevoxAnalyser.frequencyBinCount);
 }
 
-/**
- * 現在の音量を 0.0〜1.0 で返す
- * vrm.js のアニメーションループから毎フレーム呼ばれる
- */
-export function getLipSyncValue() {
-  if (!analyser || !dataArray) return 0;
-
-  analyser.getByteFrequencyData(dataArray);
-
-  let sum = 0;
-  for (let i = 0; i < dataArray.length; i++) {
-    sum += dataArray[i] * dataArray[i];
-  }
-  const rms = Math.sqrt(sum / dataArray.length) / 255;
-
-  return Math.min(1.0, rms * 3.5);
-}
-
-/** 再生終了時にリセット */
 export function resetLipSync() {
-  analyser  = null;
-  dataArray = null;
+  voicevoxAnalyser  = null;
+  voicevoxDataArray = null;
+}
+
+// Phase 6用
+let vbcableAnalyser  = null;
+let vbcableDataArray = null;
+
+export async function setupVBCableAnalyser(deviceNameHint) {
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const audioInputs = devices.filter(d => d.kind === 'audioinput');
+    console.log('[lipsync] 利用可能なオーディオ入力デバイス一覧:');
+    audioInputs.forEach(d => console.log(`  - "${d.label}" (id: ${d.deviceId})`));
+
+    const target = audioInputs.find(d =>
+      d.label.toLowerCase().includes(deviceNameHint.toLowerCase())
+    );
+    if (!target) {
+      console.error(`[lipsync] VB-Cableデバイスが見つかりません: "${deviceNameHint}"`);
+      return;
+    }
+    console.log(`[lipsync] VB-Cableデバイス検出: "${target.label}"`);
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: { deviceId: { exact: target.deviceId } },
+      video: false,
+    });
+
+    // AudioContextを作成してすぐにresumeする
+    const ctx = new AudioContext();
+    await ctx.resume();
+    console.log('[lipsync] VB-Cable AudioContext state:', ctx.state);
+
+    vbcableAnalyser = ctx.createAnalyser();
+    vbcableAnalyser.fftSize = 256;
+    vbcableAnalyser.smoothingTimeConstant = 0.6;
+
+    // streamSource → analyserのみ（destinationには繋がない＝二重出力防止）
+    const source = ctx.createMediaStreamSource(stream);
+    source.connect(vbcableAnalyser);
+
+    vbcableDataArray = new Uint8Array(vbcableAnalyser.frequencyBinCount);
+    console.log('[lipsync] VB-Cable口パク: セットアップ完了');
+  } catch (err) {
+    console.error('[lipsync] VB-Cableセットアップ失敗:', err.message);
+  }
+}
+
+function getRMS(analyser, dataArray) {
+  if (!analyser || !dataArray) return 0;
+  analyser.getByteFrequencyData(dataArray);
+  let sum = 0;
+  for (let i = 0; i < dataArray.length; i++) sum += dataArray[i] * dataArray[i];
+  return Math.sqrt(sum / dataArray.length) / 255;
+}
+
+// Phase3とPhase6の大きい方を採用
+export function getLipSyncValue() {
+  const v = getRMS(voicevoxAnalyser, voicevoxDataArray);
+  const c = getRMS(vbcableAnalyser,  vbcableDataArray);
+  return Math.min(1.0, Math.max(v, c) * 3.5);
 }

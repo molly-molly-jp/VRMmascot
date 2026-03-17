@@ -1,7 +1,8 @@
 // renderer/index.js — エントリーポイント
 import { initVRM } from './vrm.js';
-import { speak, setAudioContext } from './voicevox.js';
+import { speak } from './voicevox.js';
 import { askAI } from './ai.js';
+import { setupVBCableAnalyser } from './lipsync.js';
 
 const statusEl = document.getElementById('status');
 const inputEl  = document.getElementById('text-input');
@@ -12,53 +13,51 @@ window.addEventListener('unhandledrejection', (e) => {
   e.preventDefault();
 });
 
-// ── AudioContext（speak/口パクで共用） ────────────────────────
-function getAudioCtx() {
-  if (!window._audioCtx) {
-    window._audioCtx = new AudioContext();
-    setAudioContext(window._audioCtx);
+// AudioContext: 確実にrunning状態にしてから返す
+let audioCtx = null;
+async function getAudioCtx() {
+  if (!audioCtx) {
+    audioCtx = new AudioContext();
+    console.log('[index] AudioContext作成 state:', audioCtx.state);
   }
-  return window._audioCtx;
+  if (audioCtx.state === 'suspended') {
+    await audioCtx.resume();
+    console.log('[index] AudioContext resume完了');
+  }
+  return audioCtx;
 }
 
-// ── 読み上げキュー（Phase5） ──────────────────────────────────
-const speakQueue  = [];
-let   isSpeaking  = false;
+// 読み上げキュー
+const speakQueue = [];
+let   isSpeaking = false;
 
 async function processQueue() {
   if (isSpeaking || speakQueue.length === 0) return;
   isSpeaking = true;
-
   const text = speakQueue.shift();
-  console.log('[queue] 読み上げ開始:', text.slice(0, 40));
   statusEl.textContent = '読み上げ中...';
-
   try {
-    const ctx = getAudioCtx();
-    if (ctx.state === 'suspended') await ctx.resume();
-    await speak(text);
+    const ctx = await getAudioCtx();
+    await speak(text, ctx);
   } catch (err) {
     console.error('[queue] speak失敗:', err);
   } finally {
     isSpeaking = false;
     statusEl.textContent = speakQueue.length > 0 ? `キュー残り: ${speakQueue.length}件` : '';
-    processQueue(); // 次のキューを処理
+    processQueue();
   }
 }
 
 function enqueue(text) {
   speakQueue.push(text);
-  console.log(`[queue] 追加: ${speakQueue.length}件待機中`);
+  console.log(`[queue] 追加 残り${speakQueue.length}件`);
   processQueue();
 }
 
-// ── Phase5: メインプロセスからのキュー追加を受け取る ────────────
-window.electronAPI.onSpeakQueue((text) => {
-  console.log('[Phase5] ショートカット受信:', text.slice(0, 40));
-  enqueue(text);
-});
+// Phase 5: ショートカット
+window.electronAPI.onSpeakQueue((text) => enqueue(text));
 
-// ── VRM初期化 ─────────────────────────────────────────────────
+// 起動処理
 async function main() {
   try {
     await initVRM('vrm-canvas');
@@ -67,9 +66,19 @@ async function main() {
     console.error('VRM初期化失敗:', err);
     statusEl.textContent = `エラー: ${err.message}`;
   }
+
+  // Phase 6: VB-Cable初期化
+  try {
+    const config = await window.electronAPI.getConfig();
+    if (config.lipSyncDevice) {
+      await setupVBCableAnalyser(config.lipSyncDevice);
+    }
+  } catch (err) {
+    console.error('[Phase6] VB-Cable初期化エラー:', err.message);
+  }
 }
 
-// ── テキスト入力からAI経由で読み上げ（Phase4フロー） ───────────
+// AI → 読み上げ
 async function sendText() {
   const userText = inputEl.value.trim();
   if (!userText || inputEl.disabled) return;
@@ -79,13 +88,8 @@ async function sendText() {
   sendBtn.disabled = true;
 
   try {
-    const ctx = getAudioCtx();
-    if (ctx.state === 'suspended') await ctx.resume();
-
     statusEl.textContent = '考え中...';
     const aiText = await askAI(userText);
-
-    // AIの返答をキューに追加（他の読み上げと順番を守る）
     enqueue(aiText);
   } catch (err) {
     console.error('エラー:', err);

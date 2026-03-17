@@ -7,6 +7,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   dragEnd:     () => ipcRenderer.send('drag-end'),
   closeWindow: () => ipcRenderer.send('window-close'),
 
-  // Phase5: メインプロセスからのキュー追加を受け取る
+  // Phase 5: ショートカット読み上げ
   onSpeakQueue: (callback) => ipcRenderer.on('speak-queue', (_, text) => callback(text)),
+
+  // Phase 6: config.json の設定値を取得
+  getConfig: () => ipcRenderer.invoke('get-config'),
 });
