@@ -118,8 +118,10 @@ function getRMS(analyser, dataArray) {
 }
 
 // Phase3とPhase6の大きい方を採用
-export function getLipSyncValue() {
+// sensitivity : 音量に対する口の反応倍率（デフォルト1.0）
+// maxMouthOpen: 口の最大開口量の上限 0.0〜1.0（デフォルト1.0）
+export function getLipSyncValue(sensitivity = 1.0, maxMouthOpen = 1.0) {
   const v = getRMS(voicevoxAnalyser, voicevoxDataArray);
   const c = getRMS(vbcableAnalyser,  vbcableDataArray);
-  return Math.min(1.0, Math.max(v, c) * 3.5);
+  return Math.min(maxMouthOpen, Math.max(v, c) * 3.5 * sensitivity);
 }

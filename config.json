@@ -9,8 +9,16 @@
       "speakerId": 14,
       "currentModel": 0,
       "models": [
-        { "label": "Kyoko_Lwear", "path": "assets/groupA/Kyoko_Lwear.vrm" },
-        { "label": "Kyoko",       "path": "assets/groupA/Kyoko.vrm" }
+        {
+          "label": "Kyoko_Lwear",
+          "path": "assets/groupA/Kyoko_Lwear.vrm",
+          "lipsync": { "sensitivity": 1.0, "maxMouthOpen": 1.0 }
+        },
+        {
+          "label": "Kyoko",
+          "path": "assets/groupA/Kyoko.vrm",
+          "lipsync": { "sensitivity": 1.0, "maxMouthOpen": 1.0 }
+        }
       ]
     },
     {
@@ -20,8 +28,17 @@
       "speakerId": 0,
       "currentModel": 0,
       "models": [
-        { "label": "Marycia",  "path": "assets/groupB/Marycia.vrm" },
-        { "label": "Marcia2P", "path": "assets/groupB/Marcia2P.vrm" }
+        {
+          "label": "Marycia",
+          "path": "assets/groupB/Marycia.vrm",
+          "lipsync": { "sensitivity": 0.5, "maxMouthOpen": 2.0
+         }
+        },
+        {
+          "label": "Marcia2P",
+          "path": "assets/groupB/Marcia2P.vrm",
+          "lipsync": { "sensitivity": 0.5, "maxMouthOpen": 1.0 }
+        }
       ]
     }
   ]

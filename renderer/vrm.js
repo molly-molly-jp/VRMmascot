@@ -7,6 +7,10 @@ import { getLipSyncValue } from './lipsync.js';
 export let currentVRM = null;
 let lipSyncExpressionName = null;
 
+// タスク9-1: モデル個別の口パク設定（config.json の lipsync オブジェクト）
+let lipSyncSensitivity  = 1.0;
+let lipSyncMaxMouthOpen = 1.0;
+
 let renderer, scene, camera;
 const loader = new GLTFLoader();
 loader.register((parser) => new VRMLoaderPlugin(parser));
@@ -102,7 +106,10 @@ function startAnimLoop() {
     const delta = clock.getDelta();
     if (currentVRM) {
       if (lipSyncExpressionName && currentVRM.expressionManager) {
-        currentVRM.expressionManager.setValue(lipSyncExpressionName, getLipSyncValue());
+        currentVRM.expressionManager.setValue(
+          lipSyncExpressionName,
+          getLipSyncValue(lipSyncSensitivity, lipSyncMaxMouthOpen)
+        );
       }
       currentVRM.update(delta);
     }
@@ -130,7 +137,7 @@ export function getAlphaAtPixel(clientX, clientY) {
 
 // ── 公開API ───────────────────────────────────────────────────
 
-export async function initVRM(canvasId, vrmPath) {
+export async function initVRM(canvasId, vrmPath, lipsyncConfig = {}) {
   const canvas = document.getElementById(canvasId);
   if (!canvas) throw new Error(`canvas#${canvasId} が見つかりません`);
   initScene(canvas);
@@ -138,12 +145,15 @@ export async function initVRM(canvasId, vrmPath) {
   scene.add(vrm.scene);
   currentVRM = vrm;
   lipSyncExpressionName = resolveLipSyncExpression(vrm);
-  console.log('[VRM] 口パクExpression:', lipSyncExpressionName);
+  lipSyncSensitivity    = lipsyncConfig.sensitivity  ?? 1.0;
+  lipSyncMaxMouthOpen   = lipsyncConfig.maxMouthOpen ?? 1.0;
+  console.log('[VRM] 口パクExpression:', lipSyncExpressionName,
+    '| sensitivity:', lipSyncSensitivity, '| maxMouthOpen:', lipSyncMaxMouthOpen);
   adjustCamera(vrm);
   startAnimLoop();
 }
 
-export async function switchVRM(vrmPath) {
+export async function switchVRM(vrmPath, lipsyncConfig = {}) {
   console.log('[VRM] モデル切り替え:', vrmPath);
   if (currentVRM) {
     scene.remove(currentVRM.scene);
@@ -155,6 +165,9 @@ export async function switchVRM(vrmPath) {
   scene.add(vrm.scene);
   currentVRM = vrm;
   lipSyncExpressionName = resolveLipSyncExpression(vrm);
-  console.log('[VRM] 切り替え完了 口パクExpression:', lipSyncExpressionName);
+  lipSyncSensitivity    = lipsyncConfig.sensitivity  ?? 1.0;
+  lipSyncMaxMouthOpen   = lipsyncConfig.maxMouthOpen ?? 1.0;
+  console.log('[VRM] 切り替え完了 口パクExpression:', lipSyncExpressionName,
+    '| sensitivity:', lipSyncSensitivity, '| maxMouthOpen:', lipSyncMaxMouthOpen);
   adjustCamera(vrm);
 }

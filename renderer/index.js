@@ -86,14 +86,17 @@ api.onSwitchGroup(async (groupId) => {
   setStatus('モデル切り替え中...');
   await applyGroupSettings(group);
   const model = group.models[group.currentModel ?? 0];
-  try { await switchVRM(model.path); setStatus(''); }
+  try { await switchVRM(model.path, model.lipsync ?? {}); setStatus(''); }
   catch (e) { setStatus(`エラー: ${e.message}`); }
 });
 
 api.onSwitchModel(async (modelPath) => {
   clearQueueAndStop();
   setStatus('モデル切り替え中...');
-  try { await switchVRM(modelPath); setStatus(''); }
+  // config から modelPath に対応する lipsync 設定を逆引き
+  const allModels = configCache?.groups?.flatMap(g => g.models) ?? [];
+  const modelConf = allModels.find(m => m.path === modelPath);
+  try { await switchVRM(modelPath, modelConf?.lipsync ?? {}); setStatus(''); }
   catch (e) { setStatus(`エラー: ${e.message}`); }
 });
 
@@ -123,7 +126,7 @@ async function main() {
 
   setStatus('モデルを読み込んでいます...');
   try {
-    await initVRM('vrm-canvas', initialPath);
+    await initVRM('vrm-canvas', initialPath, firstModel?.lipsync ?? {});
     setStatus('');
   } catch (err) {
     console.error('[vrm-win] VRM初期化失敗:', err);
