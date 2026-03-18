@@ -1,8 +1,9 @@
-// content_script.js — Grok / Gemini DOM監視
+// content_script.js — Grok / Gemini / ChatGPT DOM監視
 // 対象:
 //   https://grok.com/
 //   https://x.com/i/grok
 //   https://gemini.google.com/
+//   https://chatgpt.com/
 
 (function () {
   'use strict';
@@ -12,6 +13,8 @@
   let SERVICE;
   if (hostname.includes('gemini.google.com')) {
     SERVICE = 'gemini';
+  } else if (hostname.includes('chatgpt.com')) {
+    SERVICE = 'chatgpt';
   } else if (hostname.includes('grok.com') || hostname.includes('x.com')) {
     SERVICE = 'grok';
   } else {
@@ -38,7 +41,17 @@
     '[class*="response-text"]',
   ];
 
-  const SELECTORS  = SERVICE === 'gemini' ? SELECTORS_GEMINI : SELECTORS_GROK;
+  const SELECTORS_CHATGPT = [
+    '[data-message-author-role="assistant"]',
+    '.markdown.prose',
+    '[class*="agent-turn"]',
+    '[data-testid*="conversation-turn"]',
+  ];
+
+  const SELECTORS = SERVICE === 'gemini'  ? SELECTORS_GEMINI
+                  : SERVICE === 'chatgpt' ? SELECTORS_CHATGPT
+                  :                         SELECTORS_GROK;
+
   const DEBOUNCE_MS = SERVICE === 'gemini' ? 2000 : 1500;
   const MIN_LENGTH  = 10;
 
@@ -60,13 +73,16 @@
     /^grok\s*の?\s*解答[\s:：]*/i,
     /^grok\s*の?\s*回答[\s:：]*/i,
     /^grokの返答[\s:：]*/i,
-    // 英語ラベル（例: "Gemini: " "assistant - "）
-    /^(gemini|grok|assistant|model)\s*[:\-]\s*/i,
+    // ChatGPT 系（日本語）
+    /^chatgpt\s*の?\s*解答[\s:：]*/i,
+    /^chatgpt\s*の?\s*回答[\s:：]*/i,
+    /^chatgptの返答[\s:：]*/i,
+    // 英語ラベル（例: "Gemini: " "ChatGPT - " "assistant: "）
+    /^(gemini|grok|chatgpt|assistant|model)\s*[:\-]\s*/i,
   ];
 
   function cleanText(raw) {
     let t = raw;
-    // 先頭ラベルを繰り返し除去（複数重なっている場合も対処）
     let prev = '';
     while (t !== prev) {
       prev = t;
@@ -77,7 +93,6 @@
     }
     return t.trim();
   }
-
 
   // ── 最後のアシスタントメッセージのテキストを取得 ─────────
   function getLatestResponseText() {
@@ -124,7 +139,6 @@
       }
     );
   }
-
 
   // ── MutationObserver ──────────────────────────────────────
   const observer = new MutationObserver(() => {

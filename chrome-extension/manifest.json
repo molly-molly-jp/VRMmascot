@@ -1,13 +1,14 @@
 {
   "manifest_version": 3,
   "name": "VRM Mascot — AI DOM Bridge",
-  "version": "1.1.0",
-  "description": "Grok・Geminiの返答完了を検知してVRM Mascotに送信する",
+  "version": "1.2.0",
+  "description": "Grok・Gemini・ChatGPTの返答完了を検知してVRM Mascotに送信する",
   "permissions": ["scripting"],
   "host_permissions": [
     "https://grok.com/*",
     "https://x.com/*",
     "https://gemini.google.com/*",
+    "https://chatgpt.com/*",
     "http://localhost/*"
   ],
   "content_scripts": [
@@ -15,7 +16,8 @@
       "matches": [
         "https://grok.com/*",
         "https://x.com/i/grok*",
-        "https://gemini.google.com/*"
+        "https://gemini.google.com/*",
+        "https://chatgpt.com/*"
       ],
       "js": ["content_script.js"],
       "run_at": "document_idle"

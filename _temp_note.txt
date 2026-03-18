@@ -1,0 +1,7 @@
+D:\Projects\VRMmascot\要件定義書.md の Phase 8 該当箇所を更新します。
+
+変更箇所のみ抜粋：
+
+#### Phase 8 F8-1
+変更前: 対象URL: https://x.com/i/grok
+変更後: 対象URL: https://grok.com（メイン） / https://x.com/i/grok（サブ・両対応済み）

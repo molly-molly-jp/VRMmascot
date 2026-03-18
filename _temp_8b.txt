@@ -1,0 +1,17 @@
+#### Phase 8-B: Gemini DOM自動取得 ✅完了
+
+**ゴール**: Gemini（gemini.google.com）の返答完了を自動検知し、テキストをVRMに送って読み上げる
+
+| # | 要件 | 詳細 |
+|---|------|------|
+| F8B-1 | 対象サービス | Gemini（gemini.google.com） |
+| F8B-2 | 返答完了検知 | MutationObserverで監視。Geminiはストリーミングが長いためデバウンス2000ms |
+| F8B-3 | セレクタ | model-response / [data-message-author-role="model"] 等6候補 |
+| F8B-4 | 枕言葉除去 | cleanText()で先頭の "geminiの解答" 等のラベルを除去してから送信 |
+| F8B-5 | 送信形式 | { type: 'AI_RESPONSE', service: 'gemini', text } |
+
+> **実装時の変更記録**
+> - manifest.json の拡張名を "AI DOM Bridge" に変更（Grok専用でなくなったため）
+> - content_script.js を Grok / Gemini 共通化。URLで自動判別
+> - cleanText() を追加。"geminiの解答" などの枕言葉が発話されていたため除去
+> - background.js で AI_RESPONSE（新）と GROK_RESPONSE（旧）の両形式を受け付けるよう対応
