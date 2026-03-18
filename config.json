@@ -1,6 +1,12 @@
 {
   "shortcutKey": "Ctrl+Q",
   "lipSyncDevice": "ステレオ ミキサー (Realtek(R) Audio)",
+  "blink": {
+    "enabled": true,
+    "intervalMin": 2.0,
+    "intervalMax": 6.0,
+    "blinkSpeed": 0.15
+  },
   "groups": [
     {
       "id": "A",

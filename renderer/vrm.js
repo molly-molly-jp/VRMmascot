@@ -32,6 +32,93 @@ function resolveLipSyncExpression(vrm) {
   return null;
 }
 
+// ── タスク9-2: 自動瞬き ───────────────────────────────────────
+// Expression名の解決（VRM0/VRM1両対応）
+// 戻り値: { type: 'single', name } | { type: 'dual', left, right } | null
+function resolveBlinkExpression(vrm) {
+  if (!vrm.expressionManager) return null;
+  const em = vrm.expressionManager;
+  const names = em.expressionMap instanceof Map
+    ? [...em.expressionMap.keys()]
+    : Object.keys(em.expressionMap ?? {});
+
+  // 両目まとめて動かせる単一Expression（優先）
+  for (const n of ['blink', 'Blink']) {
+    if (names.includes(n)) {
+      console.log('[VRM] 瞬きExpression (single):', n);
+      return { type: 'single', name: n };
+    }
+  }
+  // 左右別Expression
+  const left  = names.find(n => ['blinkLeft',  'Blink_L'].includes(n));
+  const right = names.find(n => ['blinkRight', 'Blink_R'].includes(n));
+  if (left && right) {
+    console.log('[VRM] 瞬きExpression (dual):', left, right);
+    return { type: 'dual', left, right };
+  }
+  console.warn('[VRM] 瞬きExpressionが見つかりません');
+  return null;
+}
+
+// 瞬きステートマシン用変数
+let blinkExpr       = null;   // resolveBlinkExpression の戻り値
+let blinkEnabled    = true;
+let blinkIntervalMin = 2.0;
+let blinkIntervalMax = 6.0;
+let blinkSpeed       = 0.15;  // 目を閉じる／開くのにかかる秒数
+
+let blinkTimer  = 3.0;        // 次の瞬きまでの残り時間（秒）
+let blinkPhase  = 'idle';     // 'idle' | 'closing' | 'opening'
+let blinkValue  = 0.0;        // 現在の閉じ具合 0(開)〜1(閉)
+
+function setBlinkConfig(cfg) {
+  blinkEnabled     = cfg?.enabled     ?? true;
+  blinkIntervalMin = cfg?.intervalMin ?? 2.0;
+  blinkIntervalMax = cfg?.intervalMax ?? 6.0;
+  blinkSpeed       = cfg?.blinkSpeed  ?? 0.15;
+  // モデル切り替え時はステートをリセット
+  blinkTimer = blinkIntervalMin + Math.random() * (blinkIntervalMax - blinkIntervalMin);
+  blinkPhase = 'idle';
+  blinkValue = 0.0;
+  console.log('[VRM] 瞬き設定:', { blinkEnabled, blinkIntervalMin, blinkIntervalMax, blinkSpeed });
+}
+
+function setBlinkValue(vrm, value) {
+  if (!vrm?.expressionManager || !blinkExpr) return;
+  if (blinkExpr.type === 'single') {
+    vrm.expressionManager.setValue(blinkExpr.name, value);
+  } else {
+    vrm.expressionManager.setValue(blinkExpr.left,  value);
+    vrm.expressionManager.setValue(blinkExpr.right, value);
+  }
+}
+
+function updateBlink(vrm, delta) {
+  if (!blinkEnabled || !blinkExpr) return;
+
+  if (blinkPhase === 'idle') {
+    blinkTimer -= delta;
+    if (blinkTimer <= 0) {
+      blinkPhase = 'closing';
+    }
+  } else if (blinkPhase === 'closing') {
+    blinkValue += delta / blinkSpeed;
+    if (blinkValue >= 1.0) {
+      blinkValue = 1.0;
+      blinkPhase = 'opening';
+    }
+    setBlinkValue(vrm, blinkValue);
+  } else if (blinkPhase === 'opening') {
+    blinkValue -= delta / blinkSpeed;
+    if (blinkValue <= 0.0) {
+      blinkValue = 0.0;
+      blinkPhase = 'idle';
+      blinkTimer = blinkIntervalMin + Math.random() * (blinkIntervalMax - blinkIntervalMin);
+    }
+    setBlinkValue(vrm, blinkValue);
+  }
+}
+
 function initScene(canvas) {
   const W = window.innerWidth  || 400;
   const H = window.innerHeight || 600;
@@ -111,6 +198,7 @@ function startAnimLoop() {
           getLipSyncValue(lipSyncSensitivity, lipSyncMaxMouthOpen)
         );
       }
+      updateBlink(currentVRM, delta);
       currentVRM.update(delta);
     }
     renderer.render(scene, camera);
@@ -137,7 +225,7 @@ export function getAlphaAtPixel(clientX, clientY) {
 
 // ── 公開API ───────────────────────────────────────────────────
 
-export async function initVRM(canvasId, vrmPath, lipsyncConfig = {}) {
+export async function initVRM(canvasId, vrmPath, lipsyncConfig = {}, blinkConfig = {}) {
   const canvas = document.getElementById(canvasId);
   if (!canvas) throw new Error(`canvas#${canvasId} が見つかりません`);
   initScene(canvas);
@@ -147,19 +235,22 @@ export async function initVRM(canvasId, vrmPath, lipsyncConfig = {}) {
   lipSyncExpressionName = resolveLipSyncExpression(vrm);
   lipSyncSensitivity    = lipsyncConfig.sensitivity  ?? 1.0;
   lipSyncMaxMouthOpen   = lipsyncConfig.maxMouthOpen ?? 1.0;
+  blinkExpr = resolveBlinkExpression(vrm);
+  setBlinkConfig(blinkConfig);
   console.log('[VRM] 口パクExpression:', lipSyncExpressionName,
     '| sensitivity:', lipSyncSensitivity, '| maxMouthOpen:', lipSyncMaxMouthOpen);
   adjustCamera(vrm);
   startAnimLoop();
 }
 
-export async function switchVRM(vrmPath, lipsyncConfig = {}) {
+export async function switchVRM(vrmPath, lipsyncConfig = {}, blinkConfig = {}) {
   console.log('[VRM] モデル切り替え:', vrmPath);
   if (currentVRM) {
     scene.remove(currentVRM.scene);
     VRMUtils.deepDispose(currentVRM.scene);
     currentVRM = null;
     lipSyncExpressionName = null;
+    blinkExpr = null;
   }
   const vrm = await loadVRM(vrmPath);
   scene.add(vrm.scene);
@@ -167,6 +258,8 @@ export async function switchVRM(vrmPath, lipsyncConfig = {}) {
   lipSyncExpressionName = resolveLipSyncExpression(vrm);
   lipSyncSensitivity    = lipsyncConfig.sensitivity  ?? 1.0;
   lipSyncMaxMouthOpen   = lipsyncConfig.maxMouthOpen ?? 1.0;
+  blinkExpr = resolveBlinkExpression(vrm);
+  setBlinkConfig(blinkConfig);
   console.log('[VRM] 切り替え完了 口パクExpression:', lipSyncExpressionName,
     '| sensitivity:', lipSyncSensitivity, '| maxMouthOpen:', lipSyncMaxMouthOpen);
   adjustCamera(vrm);
