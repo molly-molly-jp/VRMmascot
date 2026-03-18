@@ -8,8 +8,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   closeWindow: () => ipcRenderer.send('window-close'),
 
   // ── VRMウィンドウ用: 透過ヒットテスト ──────────────────────
-  // true  = 透明ピクセル上 → マウスイベントを後ろに素通し
-  // false = 不透明ピクセル上 → 通常通り受け取る
   setIgnoreMouseEvents: (ignore) => ipcRenderer.send('set-ignore-mouse-events', ignore),
 
   // ── VRMウィンドウ用: コマンド受信 ──────────────────────────
@@ -33,6 +31,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // ── コントロールウィンドウ用: ステータス受信 ────────────────
   onStatusUpdate: (cb) => ipcRenderer.on('status-update', (_, text) => cb(text)),
+
+  // ── Phase 8: DOM受信トグル ──────────────────────────────────
+  toggleDomReceive:   () => ipcRenderer.invoke('ctrl-toggle-dom-receive'),
+  getDomReceiveState: () => ipcRenderer.invoke('get-dom-receive-state'),
 
   // ── 共通 ────────────────────────────────────────────────────
   getConfig: () => ipcRenderer.invoke('get-config'),

@@ -1,9 +1,15 @@
 const { app, BrowserWindow, ipcMain, screen, globalShortcut, clipboard } = require('electron');
 const path = require('path');
 const fs   = require('fs');
+const http = require('http');
 
 let vrmWin;
 let ctrlWin;
+
+// Phase 8: 状態管理
+let currentGroupId     = null;   // 現在選択中グループID（ctrl-switch-group で更新）
+let domReceiveEnabled  = true;   // DOM受信の有効/無効フラグ
+let localServer        = null;   // port:3000 HTTPサーバー
 
 function loadConfig() {
   try {
@@ -73,7 +79,7 @@ function createControlWindow() {
 
   ctrlWin = new BrowserWindow({
     width:  360,
-    height: 400,
+    height: 440,
     x: target.bounds.x + 20,
     y: target.bounds.y + 20,
     resizable: true,
@@ -91,8 +97,6 @@ function createControlWindow() {
 }
 
 function setupIPC(config) {
-  // ── get-config は既に登録済みの場合は登録しない ──────────────
-  // ウィンドウreload時に二重登録されるのを防ぐ
   if (!ipcMain.listenerCount('get-config-handled')) {
     ipcMain.handle('get-config', () => {
       console.log('[main] get-config 呼ばれた groups:', config.groups?.length);
@@ -101,6 +105,8 @@ function setupIPC(config) {
   }
 
   ipcMain.on('ctrl-switch-group', (_, id) => {
+    currentGroupId = id;
+    console.log('[main] グループ切り替え:', id);
     if (vrmWin && !vrmWin.isDestroyed()) vrmWin.webContents.send('do-switch-group', id);
   });
   ipcMain.on('ctrl-switch-model', (_, p) => {
@@ -119,6 +125,15 @@ function setupIPC(config) {
     ctrlWin.setAlwaysOnTop(next);
     return next;
   });
+
+  // ── Phase 8: DOM受信トグル ─────────────────────────────────
+  ipcMain.handle('ctrl-toggle-dom-receive', () => {
+    domReceiveEnabled = !domReceiveEnabled;
+    console.log('[main] DOM受信:', domReceiveEnabled ? '有効' : '無効');
+    return domReceiveEnabled;
+  });
+
+  ipcMain.handle('get-dom-receive-state', () => domReceiveEnabled);
 }
 
 function setupShortcut(config) {
@@ -131,14 +146,86 @@ function setupShortcut(config) {
   console.log(ok ? `[main] ショートカット登録: ${key}` : `[main] ショートカット登録失敗: ${key}`);
 }
 
+// ── Phase 8: ローカルHTTPサーバー (port:3000) ─────────────────
+function startLocalServer(config) {
+  // 現在のグループが clipboard ソースかどうかを判定するヘルパー
+  function isClipboardGroup() {
+    if (!currentGroupId) return false;
+    const g = config.groups.find(g => g.id === currentGroupId);
+    return g?.lipSyncSource === 'clipboard';
+  }
+
+  localServer = http.createServer((req, res) => {
+    // CORS（Chrome拡張からのfetchに必要）
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+
+    if (req.method === 'POST' && req.url === '/speak') {
+      let body = '';
+      req.on('data', chunk => { body += chunk; });
+      req.on('end', () => {
+        try {
+          const { text } = JSON.parse(body);
+          if (!text || typeof text !== 'string') throw new Error('text が空');
+
+          if (!domReceiveEnabled) {
+            console.log('[server] DOM受信無効のためスキップ');
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ ok: false, reason: 'disabled' }));
+            return;
+          }
+
+          if (!isClipboardGroup()) {
+            console.log('[server] グループAのためスキップ (currentGroup:', currentGroupId, ')');
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ ok: false, reason: 'wrong group' }));
+            return;
+          }
+
+          console.log('[server] Grok DOM受信 →キューへ:', text.slice(0, 60));
+          if (vrmWin && !vrmWin.isDestroyed()) {
+            vrmWin.webContents.send('speak-queue', text.trim());
+          }
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: true }));
+        } catch (err) {
+          console.error('[server] POSTパースエラー:', err.message);
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: false, reason: err.message }));
+        }
+      });
+      return;
+    }
+
+    res.writeHead(404);
+    res.end('Not found');
+  });
+
+  localServer.listen(3000, '127.0.0.1', () => {
+    console.log('[main] ローカルサーバー起動: http://127.0.0.1:3000');
+  });
+  localServer.on('error', (err) => {
+    console.error('[main] サーバー起動失敗:', err.message);
+  });
+}
+
 app.whenReady().then(() => {
   const config = loadConfig();
 
-  // ── IPCハンドラを先に登録してからウィンドウを開く ──────────
-  // ウィンドウのJSが invoke('get-config') を呼ぶ前に
-  // ハンドラが存在している必要がある
+  // 初期グループを設定
+  currentGroupId = config.groups?.[0]?.id ?? null;
+  console.log('[main] 初期グループ:', currentGroupId);
+
   setupIPC(config);
   setupShortcut(config);
+  startLocalServer(config);
 
   createVRMWindow();
   createControlWindow();
@@ -153,5 +240,6 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   globalShortcut.unregisterAll();
+  if (localServer) localServer.close();
   if (process.platform !== 'darwin') app.quit();
 });

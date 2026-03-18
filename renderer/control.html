@@ -62,6 +62,10 @@
     .btn.active-model { background: #3dcc91; border-color: #3dcc91; color: #fff; }
     .btn.danger       { background: rgba(255,80,80,0.25); border-color: rgba(255,80,80,0.45); }
     .btn.danger:hover { background: rgba(255,80,80,0.45); }
+    /* Phase 8: DOM受信ボタン */
+    #dom-toggle-btn { min-width: 130px; }
+    #dom-toggle-btn.dom-on  { background: rgba(60,200,100,0.2); border-color: rgba(60,200,100,0.5); color: #3dcc91; }
+    #dom-toggle-btn.dom-off { background: rgba(255,80,80,0.15); border-color: rgba(255,80,80,0.35); color: #f38ba8; }
     .input-row { display: flex; gap: 6px; align-items: flex-end; }
     #text-input {
       flex: 1; min-width: 0; padding: 6px 10px;
@@ -112,19 +116,19 @@
   <div class="section" style="border-bottom:none; padding-top:7px;">
     <div class="btn-row">
       <button id="clear-btn" class="btn danger">⏹ 読み上げ停止</button>
+      <button id="dom-toggle-btn" class="btn dom-on">🔴 DOM取得 停止</button>
     </div>
   </div>
 
   <div id="status-area">起動中...</div>
 
   <div class="hint">
-    <kbd>Ctrl+Shift+R</kbd> クリップボード読み上げ &nbsp;
-    <kbd>Ctrl+Enter</kbd> テキスト送信
+    <kbd>Ctrl+Q</kbd> クリップボード読み上げ &nbsp;
+    <kbd>Ctrl+Enter</kbd> テキスト送信 &nbsp;
+    DOM取得: GrokページのChrome拡張が有効なとき使用
   </div>
 
-  <!-- JSはすべてインライン。外部ファイル・moduleなし。 -->
   <script>
-    // electronAPI が来るまで最大2秒待つ
     function waitForAPI(cb) {
       if (window.electronAPI) { cb(window.electronAPI); return; }
       let tries = 0;
@@ -136,19 +140,21 @@
     }
 
     waitForAPI(function(api) {
-      var groupBar  = document.getElementById('group-bar');
-      var modelBar  = document.getElementById('model-bar');
-      var textInput = document.getElementById('text-input');
-      var sendBtn   = document.getElementById('send-btn');
-      var clearBtn  = document.getElementById('clear-btn');
-      var pinBtn    = document.getElementById('pin-btn');
-      var statusEl  = document.getElementById('status-area');
+      var groupBar      = document.getElementById('group-bar');
+      var modelBar      = document.getElementById('model-bar');
+      var textInput     = document.getElementById('text-input');
+      var sendBtn       = document.getElementById('send-btn');
+      var clearBtn      = document.getElementById('clear-btn');
+      var pinBtn        = document.getElementById('pin-btn');
+      var domToggleBtn  = document.getElementById('dom-toggle-btn');
+      var statusEl      = document.getElementById('status-area');
 
       var configData      = null;
       var currentGroupIdx = 0;
       var alwaysOnTop     = false;
+      var domReceiveOn    = true;   // 初期状態（get-dom-receive-state で上書き）
 
-      // ステータス
+      // ─── ステータス ──────────────────────────────────────────
       function setStatus(text) {
         statusEl.textContent = text || '待機中';
         statusEl.className   = '';
@@ -157,7 +163,7 @@
       }
       api.onStatusUpdate(function(text) { setStatus(text); });
 
-      // 最前面トグル
+      // ─── 最前面トグル ────────────────────────────────────────
       function updatePinBtn() {
         pinBtn.textContent = alwaysOnTop ? '📌 最前面 ON' : '📌 最前面 OFF';
         pinBtn.className   = alwaysOnTop ? 'on' : '';
@@ -170,7 +176,33 @@
       });
       updatePinBtn();
 
-      // グループボタン描画
+      // ─── Phase 8: DOM受信トグル ──────────────────────────────
+      function updateDomBtn() {
+        if (domReceiveOn) {
+          domToggleBtn.textContent = '🔴 DOM取得 停止';
+          domToggleBtn.className   = 'btn dom-on';
+          domToggleBtn.title       = 'クリックでGrok DOM取得を無効化します';
+        } else {
+          domToggleBtn.textContent = '🟢 DOM取得 再開';
+          domToggleBtn.className   = 'btn dom-off';
+          domToggleBtn.title       = 'クリックでGrok DOM取得を有効化します';
+        }
+      }
+      domToggleBtn.addEventListener('click', function() {
+        api.toggleDomReceive().then(function(next) {
+          domReceiveOn = next;
+          updateDomBtn();
+          setStatus(next ? 'DOM取得 有効にしました' : 'DOM取得 停止しました');
+          setTimeout(function() { setStatus(''); }, 1800);
+        });
+      });
+      // 起動時にサーバー側の状態を取得して同期
+      api.getDomReceiveState().then(function(state) {
+        domReceiveOn = state;
+        updateDomBtn();
+      }).catch(function() { updateDomBtn(); });
+
+      // ─── グループボタン ──────────────────────────────────────
       function renderGroupButtons() {
         groupBar.innerHTML = '';
         configData.groups.forEach(function(g, i) {
@@ -190,7 +222,7 @@
         });
       }
 
-      // モデルボタン描画
+      // ─── モデルボタン ────────────────────────────────────────
       function renderModelButtons() {
         modelBar.innerHTML = '';
         var group = configData.groups[currentGroupIdx];
@@ -208,7 +240,7 @@
         });
       }
 
-      // テキスト送信
+      // ─── テキスト送信 ────────────────────────────────────────
       function sendText() {
         var text = textInput.value.trim();
         if (!text) return;
@@ -229,14 +261,14 @@
         textInput.style.height = Math.min(textInput.scrollHeight, 120) + 'px';
       });
 
-      // 停止
+      // ─── 停止 ────────────────────────────────────────────────
       clearBtn.addEventListener('click', function() {
         api.clearQueue();
         setStatus('停止しました');
         setTimeout(function() { setStatus(''); }, 1500);
       });
 
-      // 起動
+      // ─── 起動 ────────────────────────────────────────────────
       api.getConfig().then(function(config) {
         configData = config;
         if (!configData || !configData.groups) {
