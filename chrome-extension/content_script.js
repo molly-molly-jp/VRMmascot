@@ -1,45 +1,85 @@
-// content_script.js — Grok DOM監視
-// 対象: https://grok.com/ および https://x.com/i/grok
-//
-// ■ 検知ロジック
-//   MutationObserver でページ全体を監視し、
-//   最後のアシスタント返答テキストが 1.5 秒間変化しなければ
-//   「ストリーミング完了」とみなして background.js に送信する。
-//
-// ■ セレクタが壊れた場合
-//   コンソールにエラーを出すだけ。自動フォールバックなし。
-//   ChromeのDevToolsで返答要素を検証し、SELECTORS を更新してください。
+// content_script.js — Grok / Gemini DOM監視
+// 対象:
+//   https://grok.com/
+//   https://x.com/i/grok
+//   https://gemini.google.com/
 
 (function () {
   'use strict';
 
-  // ────────────────────────────────────────────────────────────
-  // セレクタ候補（優先度順）
-  // grok.com と x.com/i/grok の両方をカバーする
-  // ────────────────────────────────────────────────────────────
-  const SELECTORS = [
-    // grok.com 用（2025年時点）
+  // ── サービス判定 ──────────────────────────────────────────
+  const hostname = location.hostname;
+  let SERVICE;
+  if (hostname.includes('gemini.google.com')) {
+    SERVICE = 'gemini';
+  } else if (hostname.includes('grok.com') || hostname.includes('x.com')) {
+    SERVICE = 'grok';
+  } else {
+    SERVICE = 'unknown';
+  }
+
+  // ── サービス別セレクタ候補（優先度順） ───────────────────
+  const SELECTORS_GROK = [
     '[class*="message-bubble"]',
     '[class*="MessageBubble"]',
     '[data-message-author-role="assistant"]',
     '[class*="assistant-message"]',
-    // x.com/i/grok 用
     '[data-testid="grok-message-content"]',
     '[data-testid="messageContent"]',
     '.grok-message-content',
   ];
 
-  // ストリーミング停止判定の待ち時間 (ms)
-  const DEBOUNCE_MS = 1500;
-  // 最小文字数（短すぎるものは無視）
-  const MIN_LENGTH = 10;
+  const SELECTORS_GEMINI = [
+    'model-response',
+    '[data-message-author-role="model"]',
+    '.response-content',
+    'message-content',
+    '.model-run-chunk',
+    '[class*="response-text"]',
+  ];
+
+  const SELECTORS  = SERVICE === 'gemini' ? SELECTORS_GEMINI : SELECTORS_GROK;
+  const DEBOUNCE_MS = SERVICE === 'gemini' ? 2000 : 1500;
+  const MIN_LENGTH  = 10;
 
   let debounceTimer = null;
   let lastSentText  = '';
 
-  // ────────────────────────────────────────────────────────────
-  // 最後のアシスタントメッセージのテキストを取得する
-  // ────────────────────────────────────────────────────────────
+  // ── テキストクリーニング ──────────────────────────────────
+  // DOMに混入する枕言葉・ラベルを除去して本文だけにする
+  const STRIP_PREFIXES = [
+    // Gemini 系（日本語）
+    /^gemini\s*の?\s*解答[\s:：]*/i,
+    /^gemini\s*の?\s*回答[\s:：]*/i,
+    /^geminiの返答[\s:：]*/i,
+    /^AIの解答[\s:：]*/i,
+    /^AIの回答[\s:：]*/i,
+    /^AIの返答[\s:：]*/i,
+    /^モデルの回答[\s:：]*/i,
+    // Grok 系（日本語）
+    /^grok\s*の?\s*解答[\s:：]*/i,
+    /^grok\s*の?\s*回答[\s:：]*/i,
+    /^grokの返答[\s:：]*/i,
+    // 英語ラベル（例: "Gemini: " "assistant - "）
+    /^(gemini|grok|assistant|model)\s*[:\-]\s*/i,
+  ];
+
+  function cleanText(raw) {
+    let t = raw;
+    // 先頭ラベルを繰り返し除去（複数重なっている場合も対処）
+    let prev = '';
+    while (t !== prev) {
+      prev = t;
+      for (const re of STRIP_PREFIXES) {
+        t = t.replace(re, '');
+      }
+      t = t.trimStart();
+    }
+    return t.trim();
+  }
+
+
+  // ── 最後のアシスタントメッセージのテキストを取得 ─────────
   function getLatestResponseText() {
     for (const sel of SELECTORS) {
       let nodes;
@@ -59,31 +99,34 @@
     return '';
   }
 
-  // ────────────────────────────────────────────────────────────
-  // 送信
-  // ────────────────────────────────────────────────────────────
+  // ── 送信 ─────────────────────────────────────────────────
   function maybeSend() {
-    const text = getLatestResponseText();
-    if (!text) return;
+    const raw  = getLatestResponseText();
+    if (!raw) return;
+
+    const text = cleanText(raw);
+    if (!text || text.length < MIN_LENGTH) return;
     if (text === lastSentText) return;
 
     lastSentText = text;
-    console.log('[VRM-Bridge] 送信:', text.slice(0, 80), '...');
+    console.log('[VRM-Bridge] 送信 service=' + SERVICE + ':', text.slice(0, 80), '...');
 
-    chrome.runtime.sendMessage({ type: 'GROK_RESPONSE', text }, (response) => {
-      if (chrome.runtime.lastError) {
-        console.error('[VRM-Bridge] sendMessage失敗:', chrome.runtime.lastError.message);
-        return;
+    chrome.runtime.sendMessage(
+      { type: 'AI_RESPONSE', service: SERVICE, text },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          console.error('[VRM-Bridge] sendMessage失敗:', chrome.runtime.lastError.message);
+          return;
+        }
+        if (response && !response.ok) {
+          console.warn('[VRM-Bridge] サーバー応答NG:', response.reason);
+        }
       }
-      if (response && !response.ok) {
-        console.warn('[VRM-Bridge] サーバー応答NG:', response.reason);
-      }
-    });
+    );
   }
 
-  // ────────────────────────────────────────────────────────────
-  // MutationObserver
-  // ────────────────────────────────────────────────────────────
+
+  // ── MutationObserver ──────────────────────────────────────
   const observer = new MutationObserver(() => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
@@ -101,5 +144,9 @@
     characterData: true,
   });
 
-  console.log('[VRM-Bridge] Grok DOM監視を開始しました URL:', location.href, 'debounce:', DEBOUNCE_MS + 'ms');
+  console.log(
+    '[VRM-Bridge] DOM監視開始 service=' + SERVICE,
+    'URL:', location.href,
+    'debounce:', DEBOUNCE_MS + 'ms'
+  );
 })();
