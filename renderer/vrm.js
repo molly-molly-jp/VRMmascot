@@ -119,6 +119,84 @@ function updateBlink(vrm, delta) {
   }
 }
 
+// ── タスク9-3: 視線ランダム移動 ──────────────────────────────
+// vrm.lookAt.target の位置を毎フレーム動かして視線を制御する。
+// angleX: 垂直方向の最大角度（ラジアン）
+// angleY: 水平方向の最大角度（ラジアン）
+// returnSpeed: 現在角度を目標角度に近づける速さ（lerp係数 /秒）
+
+let gazeEnabled     = true;
+let gazeIntervalMin = 2.0;
+let gazeIntervalMax = 6.0;
+let gazeAngleX      = 0.08;  // 垂直
+let gazeAngleY      = 0.05;  // 水平
+let gazeReturnSpeed = 0.8;
+
+let gazeTimer    = 3.0;   // 次の目標切り替えまでの残り時間
+let gazeTargetX  = 0.0;   // 目標角度（垂直）
+let gazeTargetY  = 0.0;   // 目標角度（水平）
+let gazeCurrentX = 0.0;   // 現在の補間済み角度（垂直）
+let gazeCurrentY = 0.0;   // 現在の補間済み角度（水平）
+
+// lookAt target を配置するための作業用Object3D（scene追加不要）
+const _gazeLookAtTarget = new THREE.Object3D();
+
+function setGazeConfig(cfg) {
+  gazeEnabled     = cfg?.enabled     ?? true;
+  gazeIntervalMin = cfg?.intervalMin ?? 2.0;
+  gazeIntervalMax = cfg?.intervalMax ?? 6.0;
+  gazeAngleX      = cfg?.angleX      ?? 0.08;
+  gazeAngleY      = cfg?.angleY      ?? 0.05;
+  gazeReturnSpeed = cfg?.returnSpeed ?? 0.8;
+  // モデル切り替え時はリセット
+  gazeTimer    = gazeIntervalMin + Math.random() * (gazeIntervalMax - gazeIntervalMin);
+  gazeTargetX  = 0.0;
+  gazeTargetY  = 0.0;
+  gazeCurrentX = 0.0;
+  gazeCurrentY = 0.0;
+  console.log('[VRM] 視線設定:', { gazeEnabled, gazeIntervalMin, gazeIntervalMax, gazeAngleX, gazeAngleY, gazeReturnSpeed });
+}
+
+function updateGaze(vrm, delta) {
+  if (!gazeEnabled || !vrm.lookAt) return;
+
+  // タイマーで目標角度を更新
+  gazeTimer -= delta;
+  if (gazeTimer <= 0) {
+    // 半分の確率で正面に戻す（自然な動きのため）
+    if (Math.random() < 0.3) {
+      gazeTargetX = 0.0;
+      gazeTargetY = 0.0;
+    } else {
+      gazeTargetX = (Math.random() * 2 - 1) * gazeAngleX;
+      gazeTargetY = (Math.random() * 2 - 1) * gazeAngleY;
+    }
+    gazeTimer = gazeIntervalMin + Math.random() * (gazeIntervalMax - gazeIntervalMin);
+  }
+
+  // 現在角度を目標に向けてスムーズに補間
+  const t = Math.min(1.0, gazeReturnSpeed * delta * 60);
+  gazeCurrentX += (gazeTargetX - gazeCurrentX) * t;
+  gazeCurrentY += (gazeTargetY - gazeCurrentY) * t;
+
+  // 頭ボーンのワールド位置を取得してlookAt targetを配置
+  const headNode = vrm.humanoid?.getNormalizedBoneNode('head');
+  if (!headNode) return;
+
+  const headPos = new THREE.Vector3();
+  headNode.getWorldPosition(headPos);
+
+  // 2m前方を基点に上下左右オフセット
+  const dist = 2.0;
+  _gazeLookAtTarget.position.set(
+    headPos.x + Math.sin(gazeCurrentY) * dist,
+    headPos.y - Math.sin(gazeCurrentX) * dist,
+    headPos.z - Math.cos(gazeCurrentY) * dist
+  );
+
+  vrm.lookAt.target = _gazeLookAtTarget;
+}
+
 function initScene(canvas) {
   const W = window.innerWidth  || 400;
   const H = window.innerHeight || 600;
@@ -199,6 +277,7 @@ function startAnimLoop() {
         );
       }
       updateBlink(currentVRM, delta);
+      updateGaze(currentVRM, delta);
       currentVRM.update(delta);
     }
     renderer.render(scene, camera);
@@ -225,7 +304,7 @@ export function getAlphaAtPixel(clientX, clientY) {
 
 // ── 公開API ───────────────────────────────────────────────────
 
-export async function initVRM(canvasId, vrmPath, lipsyncConfig = {}, blinkConfig = {}) {
+export async function initVRM(canvasId, vrmPath, lipsyncConfig = {}, blinkConfig = {}, gazeConfig = {}) {
   const canvas = document.getElementById(canvasId);
   if (!canvas) throw new Error(`canvas#${canvasId} が見つかりません`);
   initScene(canvas);
@@ -237,13 +316,14 @@ export async function initVRM(canvasId, vrmPath, lipsyncConfig = {}, blinkConfig
   lipSyncMaxMouthOpen   = lipsyncConfig.maxMouthOpen ?? 1.0;
   blinkExpr = resolveBlinkExpression(vrm);
   setBlinkConfig(blinkConfig);
+  setGazeConfig(gazeConfig);
   console.log('[VRM] 口パクExpression:', lipSyncExpressionName,
     '| sensitivity:', lipSyncSensitivity, '| maxMouthOpen:', lipSyncMaxMouthOpen);
   adjustCamera(vrm);
   startAnimLoop();
 }
 
-export async function switchVRM(vrmPath, lipsyncConfig = {}, blinkConfig = {}) {
+export async function switchVRM(vrmPath, lipsyncConfig = {}, blinkConfig = {}, gazeConfig = {}) {
   console.log('[VRM] モデル切り替え:', vrmPath);
   if (currentVRM) {
     scene.remove(currentVRM.scene);
@@ -260,6 +340,7 @@ export async function switchVRM(vrmPath, lipsyncConfig = {}, blinkConfig = {}) {
   lipSyncMaxMouthOpen   = lipsyncConfig.maxMouthOpen ?? 1.0;
   blinkExpr = resolveBlinkExpression(vrm);
   setBlinkConfig(blinkConfig);
+  setGazeConfig(gazeConfig);
   console.log('[VRM] 切り替え完了 口パクExpression:', lipSyncExpressionName,
     '| sensitivity:', lipSyncSensitivity, '| maxMouthOpen:', lipSyncMaxMouthOpen);
   adjustCamera(vrm);

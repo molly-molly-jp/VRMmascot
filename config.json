@@ -7,6 +7,14 @@
     "intervalMax": 6.0,
     "blinkSpeed": 0.15
   },
+  "gaze": {
+    "enabled": true,
+    "intervalMin": 2.0,
+    "intervalMax": 6.0,
+    "angleX": 0.08,
+    "angleY": 0.05,
+    "returnSpeed": 0.8
+  },
   "groups": [
     {
       "id": "A",
@@ -18,12 +26,14 @@
         {
           "label": "Kyoko_Lwear",
           "path": "assets/groupA/Kyoko_Lwear.vrm",
-          "lipsync": { "sensitivity": 1.0, "maxMouthOpen": 1.0 }
+          "lipsync": { "sensitivity": 1.0, "maxMouthOpen": 1.0 },
+          "gaze": { "angleX": 0.08, "angleY": 0.05 }
         },
         {
           "label": "Kyoko",
           "path": "assets/groupA/Kyoko.vrm",
-          "lipsync": { "sensitivity": 1.0, "maxMouthOpen": 1.0 }
+          "lipsync": { "sensitivity": 1.0, "maxMouthOpen": 1.0 },
+          "gaze": { "angleX": 0.08, "angleY": 0.05 }
         }
       ]
     },
@@ -37,13 +47,14 @@
         {
           "label": "Marycia",
           "path": "assets/groupB/Marycia.vrm",
-          "lipsync": { "sensitivity": 0.5, "maxMouthOpen": 2.0
-         }
+          "lipsync": { "sensitivity": 0.5, "maxMouthOpen": 2.0 },
+          "gaze": { "angleX": 0.08, "angleY": 0.05 }
         },
         {
           "label": "Marcia2P",
           "path": "assets/groupB/Marcia2P.vrm",
-          "lipsync": { "sensitivity": 0.5, "maxMouthOpen": 1.0 }
+          "lipsync": { "sensitivity": 0.5, "maxMouthOpen": 1.0 },
+          "gaze": { "angleX": 0.08, "angleY": 0.05 }
         }
       ]
     }
