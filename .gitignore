@@ -1,9 +1,11 @@
 # 依存パッケージ（npm installで再生成できる）
 node_modules/
 
-# VRMモデル・モーション（著作権・容量の関係でGit管理しない）
+# VRMモデル・モーション・音声（著作権・容量の関係でGit管理しない）
 assets/**/*.vrm
 assets/**/*.vrma
+assets/**/*.wav
+assets/**/*.mp3
 
 # Electronビルド成果物
 dist/

@@ -136,7 +136,7 @@ function createControlWindow() {
   const target   = displays.length > 1 ? displays[1] : displays[0];
 
   ctrlWin = new BrowserWindow({
-    width:  360,
+    width:  560,
     height: 520,
     x: target.bounds.x + 20,
     y: target.bounds.y + 20,
@@ -232,6 +232,14 @@ function setupIPC(config) {
     const modelConf = ensureModelInConfig(config, modelPath);
     if (vrmWin && !vrmWin.isDestroyed())
       vrmWin.webContents.send('do-entrance-a', { path: modelPath, modelConf });
+  });
+
+  // ── Phase 10-3: 登場演出B ────────────────────────────────────
+  // modelPath を受け取り、modelConf（entrance.patternB含む）を付けてVRMウィンドウへ転送
+  ipcMain.on('ctrl-entrance-b', (_, modelPath) => {
+    const modelConf = ensureModelInConfig(config, modelPath);
+    if (vrmWin && !vrmWin.isDestroyed())
+      vrmWin.webContents.send('do-entrance-b', { path: modelPath, modelConf });
   });
 }
 

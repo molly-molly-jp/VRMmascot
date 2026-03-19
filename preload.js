@@ -46,6 +46,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   entranceA:    (modelPath) => ipcRenderer.send('ctrl-entrance-a', modelPath),
   onEntranceA:  (cb)        => ipcRenderer.on('do-entrance-a', (_, data) => cb(data)),
 
+  // ── Phase 10-3: 登場演出B ────────────────────────────────────
+  entranceB:    (modelPath) => ipcRenderer.send('ctrl-entrance-b', modelPath),
+  onEntranceB:  (cb)        => ipcRenderer.on('do-entrance-b', (_, data) => cb(data)),
+
   // ── 共通 ────────────────────────────────────────────────────
   getConfig: () => ipcRenderer.invoke('get-config'),
 });

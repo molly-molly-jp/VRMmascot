@@ -153,18 +153,19 @@ function _playEntranceSound(soundPath) {
   try {
     const base     = window.location.href.replace(/\/renderer\/[^/]+$/, '');
     const soundUrl = base + '/' + soundPath;
-    console.log('[vrm-win] 登場演出A: 音声再生:', soundUrl);
+    console.log('[vrm-win] 登場演出: 音声再生:', soundUrl);
     const audio = new Audio(soundUrl);
-    audio.play().catch(e => console.warn('[vrm-win] 登場演出A: 音声再生失敗:', e.message));
+    audio.play().catch(e => console.warn('[vrm-win] 登場演出: 音声再生失敗:', e.message));
   } catch (e) {
-    console.warn('[vrm-win] 登場演出A: 音声初期化失敗:', e.message);
+    console.warn('[vrm-win] 登場演出: 音声初期化失敗:', e.message);
   }
 }
 
-api.onEntranceA(async ({ path: modelPath, modelConf }) => {
-  console.log('[vrm-win] 登場演出A 開始:', modelPath);
+/** 登場演出の共通ロジック。patternKey = 'patternA' | 'patternB' */
+async function _runEntrance(modelPath, modelConf, patternKey, label) {
+  console.log(`[vrm-win] 登場演出${label} 開始:`, modelPath);
   clearQueueAndStop();
-  setStatus('登場演出A 読み込み中...');
+  setStatus(`登場演出${label} 読み込み中...`);
 
   // ① モデルロード
   try {
@@ -177,34 +178,28 @@ api.onEntranceA(async ({ path: modelPath, modelConf }) => {
       getRestPoseConfig(modelConf)
     );
   } catch (e) {
-    console.error('[vrm-win] 登場演出A: switchVRM失敗:', e);
+    console.error(`[vrm-win] 登場演出${label}: switchVRM失敗:`, e);
     setStatus(`エラー: ${e.message}`);
     return;
   }
 
-  const patternA = modelConf?.entrance?.patternA;
-  if (!patternA?.motion) {
-    // motion未設定ならモデルロードのみ
-    console.warn('[vrm-win] 登場演出A: patternA.motion が未設定。モデルロードのみ実行。');
+  const pattern = modelConf?.entrance?.[patternKey];
+  if (!pattern?.motion) {
+    console.warn(`[vrm-win] 登場演出${label}: ${patternKey}.motion が未設定。モデルロードのみ実行。`);
     setStatus('');
     return;
   }
 
-  const { motion, sound, soundDelayMs = 0 } = patternA;
-  setStatus('登場演出A 再生中...');
+  const { motion, sound, soundDelayMs = 0 } = pattern;
+  setStatus(`登場演出${label} 再生中...`);
 
   // ② soundDelayMs に応じて VRMA と音声の開始タイミングをずらす
-  //    soundDelayMs = 0  → VRMA再生開始と同時に音声
-  //    soundDelayMs > 0  → VRMA再生開始後、soundDelayMs ms後に音声
-  //    soundDelayMs < 0  → 音声を先に開始し、|soundDelayMs| ms後にVRMA
   try {
     if (soundDelayMs < 0) {
-      // 音声を先に開始し、|soundDelayMs|ms後にVRMA
       _playEntranceSound(sound);
       await new Promise(r => setTimeout(r, -soundDelayMs));
       await playMotion(motion);
     } else {
-      // VRMAのロード完了＝再生開始を待ってから音声タイマーをセット
       await playMotion(motion);
       if (soundDelayMs === 0) {
         _playEntranceSound(sound);
@@ -213,11 +208,14 @@ api.onEntranceA(async ({ path: modelPath, modelConf }) => {
       }
     }
   } catch (e) {
-    console.error('[vrm-win] 登場演出A: VRMA再生失敗:', e);
+    console.error(`[vrm-win] 登場演出${label}: VRMA再生失敗:`, e);
   }
 
   setStatus('');
-});
+}
+
+api.onEntranceA(({ path: modelPath, modelConf }) => _runEntrance(modelPath, modelConf, 'patternA', 'A'));
+api.onEntranceB(({ path: modelPath, modelConf }) => _runEntrance(modelPath, modelConf, 'patternB', 'B'));
 
 // ─── 起動 ─────────────────────────────────────────────────────
 async function main() {
