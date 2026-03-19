@@ -194,23 +194,23 @@ api.onEntranceA(async ({ path: modelPath, modelConf }) => {
   setStatus('登場演出A 再生中...');
 
   // ② soundDelayMs に応じて VRMA と音声の開始タイミングをずらす
-  //    soundDelayMs = 0  → 同時開始
-  //    soundDelayMs > 0  → VRMAを先に開始し、soundDelayMs ms後に音声
+  //    soundDelayMs = 0  → VRMA再生開始と同時に音声
+  //    soundDelayMs > 0  → VRMA再生開始後、soundDelayMs ms後に音声
   //    soundDelayMs < 0  → 音声を先に開始し、|soundDelayMs| ms後にVRMA
   try {
     if (soundDelayMs < 0) {
-      // 音声を先に開始
+      // 音声を先に開始し、|soundDelayMs|ms後にVRMA
       _playEntranceSound(sound);
       await new Promise(r => setTimeout(r, -soundDelayMs));
       await playMotion(motion);
     } else {
-      // VRMAと音声を同時 or 音声を遅らせて開始
-      if (soundDelayMs > 0) {
-        setTimeout(() => _playEntranceSound(sound), soundDelayMs);
-      } else {
-        _playEntranceSound(sound);
-      }
+      // VRMAのロード完了＝再生開始を待ってから音声タイマーをセット
       await playMotion(motion);
+      if (soundDelayMs === 0) {
+        _playEntranceSound(sound);
+      } else {
+        setTimeout(() => _playEntranceSound(sound), soundDelayMs);
+      }
     }
   } catch (e) {
     console.error('[vrm-win] 登場演出A: VRMA再生失敗:', e);

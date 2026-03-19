@@ -133,6 +133,11 @@
             "patternA": {
               "motion": "assets/motions/entrance_default.vrma",
               "sound":  "assets/sounds/entrance_default.wav",
+              "soundDelayMs": 0            
+            },
+            "patternB": {
+              "motion": "assets/motions/entrance_custom.vrma",
+              "sound":  "assets/sounds/entrance_custom.wav",
               "soundDelayMs": 0
             }
           }
@@ -272,7 +277,7 @@
             "patternA": {
               "motion": "assets/motions/entrance_default.vrma",
               "sound":  "assets/sounds/entrance_default.wav",
-              "soundDelayMs": 0
+              "soundDelayMs": 3000
             }
           }
         }
