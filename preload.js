@@ -53,7 +53,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // ── Phase 10-3: 登場演出C（ランダム抽選） ────────────────────
   entranceC:    (modelPath) => ipcRenderer.send('ctrl-entrance-c', modelPath),
   onEntranceC:  (cb)        => ipcRenderer.on('do-entrance-c', (_, data) => cb(data)),
-  scanSoundFiles: ()        => ipcRenderer.invoke('scan-sound-files'),
 
   // ── 共通 ────────────────────────────────────────────────────
   getConfig: () => ipcRenderer.invoke('get-config'),

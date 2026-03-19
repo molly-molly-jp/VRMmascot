@@ -253,48 +253,51 @@ function setupIPC(config) {
       vrmWin.webContents.send('do-entrance-b', { path: modelPath, modelConf });
   });
 
-  // ── Phase 10-3: 登場演出C（ランダム抽選） ─────────────────────
-  // motionsフォルダからVRMAをランダム抽選、soundsフォルダから音声をランダム抽選して再生
-  ipcMain.handle('scan-sound-files', () => {
-    const folderPath = path.join(__dirname, 'assets', 'sounds');
-    if (!fs.existsSync(folderPath)) return [];
-    const exts = ['.wav', '.mp3', '.ogg', '.m4a'];
-    return fs.readdirSync(folderPath)
-      .filter(f => exts.includes(path.extname(f).toLowerCase()))
-      .sort()
-      .map(f => ({
-        label: f.replace(/\.[^.]+$/, ''),
-        path:  `assets/sounds/${f}`
-      }));
-  });
-
+  // ── Phase 10-3: 登場演出C（ペアフォルダ方式） ─────────────────
+  // entrance_c/ フォルダ内の .vrma と同名の音声ファイルをペアとして扱いランダム抽選
   ipcMain.on('ctrl-entrance-c', (_, modelPath) => {
     const modelConf = ensureModelInConfig(config, modelPath);
 
-    // VRMA ランダム抽選
-    const motionsDir = path.join(__dirname, 'assets', 'motions');
-    const vrmaFiles  = fs.existsSync(motionsDir)
-      ? fs.readdirSync(motionsDir).filter(f => f.toLowerCase().endsWith('.vrma'))
-      : [];
+    const entranceCDir = path.join(__dirname, 'assets', 'motions', 'entrance_c');
+    const soundExts    = ['.wav', '.mp3'];
 
-    // sounds ランダム抽選
-    const soundsDir  = path.join(__dirname, 'assets', 'sounds');
-    const soundExts  = ['.wav', '.mp3', '.ogg', '.m4a'];
-    const soundFiles = fs.existsSync(soundsDir)
-      ? fs.readdirSync(soundsDir).filter(f => soundExts.includes(path.extname(f).toLowerCase()))
-      : [];
+    if (!fs.existsSync(entranceCDir)) {
+      console.warn('[main] 登場演出C: フォルダが存在しません:', entranceCDir);
+      return;
+    }
 
-    const randomMotion = vrmaFiles.length > 0
-      ? `assets/motions/${vrmaFiles[Math.floor(Math.random() * vrmaFiles.length)]}`
-      : null;
-    const randomSound  = soundFiles.length > 0
-      ? `assets/sounds/${soundFiles[Math.floor(Math.random() * soundFiles.length)]}`
-      : null;
+    // .vrma ファイルを全件取得してペアリスト構築
+    const vrmaFiles = fs.readdirSync(entranceCDir)
+      .filter(f => f.toLowerCase().endsWith('.vrma'));
 
-    console.log(`[main] 登場演出C: motion=${randomMotion ?? 'なし'} sound=${randomSound ?? 'なし'}`);
+    if (vrmaFiles.length === 0) {
+      console.warn('[main] 登場演出C: VRMAファイルが見つかりません:', entranceCDir);
+      return;
+    }
+
+    // ペアリスト: { motion, sound|null }
+    const pairs = vrmaFiles.map(vrmaFile => {
+      const baseName = vrmaFile.replace(/\.vrma$/i, '');
+      const foundSound = soundExts
+        .map(ext => baseName + ext)
+        .find(sf => fs.existsSync(path.join(entranceCDir, sf)));
+      return {
+        motion: `assets/motions/entrance_c/${vrmaFile}`,
+        sound:  foundSound ? `assets/motions/entrance_c/${foundSound}` : null,
+      };
+    });
+
+    // ランダム抽選
+    const chosen = pairs[Math.floor(Math.random() * pairs.length)];
+    console.log(`[main] 登場演出C: motion=${chosen.motion} sound=${chosen.sound ?? 'なし'}`);
 
     if (vrmWin && !vrmWin.isDestroyed())
-      vrmWin.webContents.send('do-entrance-c', { path: modelPath, modelConf, randomMotion, randomSound });
+      vrmWin.webContents.send('do-entrance-c', {
+        path: modelPath,
+        modelConf,
+        randomMotion: chosen.motion,
+        randomSound:  chosen.sound,
+      });
   });
 }
 
