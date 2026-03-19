@@ -15,6 +15,28 @@
     "angleY": 0.05,
     "returnSpeed": 0.8
   },
+  "restPose": {
+    "enabled": true,
+    "bones": [
+      { "name": "leftUpperArm",  "z":  1.3 },
+      { "name": "rightUpperArm", "z": -1.3 }
+    ]
+  },
+  "idleMotion": {
+    "enabled": true,
+    "motions": [
+      { "bone": "neck",         "axis": "x", "period": 7.0,  "amplitude": 0.024, "comment": "頷き（首）" },
+      { "bone": "head",         "axis": "x", "period": 7.0,  "amplitude": 0.016, "comment": "頷き（頭）" },
+      { "bone": "neck",         "axis": "z", "period": 11.0, "amplitude": 0.018, "comment": "首かしげ（首）" },
+      { "bone": "head",         "axis": "z", "period": 11.0, "amplitude": 0.012, "comment": "首かしげ（頭）" },
+      { "bone": "neck",         "axis": "y", "period": 5.0,  "amplitude": 0.012, "comment": "首振り（首）" },
+      { "bone": "head",         "axis": "y", "period": 5.0,  "amplitude": 0.008, "comment": "首振り（頭）" },
+      { "bone": "chest",        "axis": "x", "period": 4.0,  "amplitude": 0.010, "comment": "呼吸・胸" },
+      { "bone": "upperChest",   "axis": "x", "period": 4.0,  "amplitude": 0.008, "comment": "呼吸・上胸" },
+      { "bone": "leftShoulder", "axis": "z", "period": 4.0,  "amplitude": 0.006, "comment": "呼吸・左肩" },
+      { "bone": "rightShoulder","axis": "z", "period": 4.0,  "amplitude":-0.006, "comment": "呼吸・右肩（反転）" }
+    ]
+  },
   "groups": [
     {
       "id": "A",
@@ -27,13 +49,21 @@
           "label": "Kyoko_Lwear",
           "path": "assets/groupA/Kyoko_Lwear.vrm",
           "lipsync": { "sensitivity": 1.0, "maxMouthOpen": 1.0 },
-          "gaze": { "angleX": 0.08, "angleY": 0.05 }
+          "gaze": { "angleX": 0.08, "angleY": 0.05 },
+          "restPose": { "enabled": true, "bones": [
+            { "name": "leftUpperArm",  "z":  1.3 },
+            { "name": "rightUpperArm", "z": -1.3 }
+          ]}
         },
         {
           "label": "Kyoko",
           "path": "assets/groupA/Kyoko.vrm",
           "lipsync": { "sensitivity": 1.0, "maxMouthOpen": 1.0 },
-          "gaze": { "angleX": 0.08, "angleY": 0.05 }
+          "gaze": { "angleX": 0.08, "angleY": 0.05 },
+          "restPose": { "enabled": true, "bones": [
+            { "name": "leftUpperArm",  "z":  1.3 },
+            { "name": "rightUpperArm", "z": -1.3 }
+          ]}
         }
       ]
     },
@@ -48,13 +78,21 @@
           "label": "Marycia",
           "path": "assets/groupB/Marycia.vrm",
           "lipsync": { "sensitivity": 0.5, "maxMouthOpen": 2.0 },
-          "gaze": { "angleX": 0.08, "angleY": 0.05 }
+          "gaze": { "angleX": 0.08, "angleY": 0.05 },
+          "restPose": { "enabled": true, "bones": [
+            { "name": "leftUpperArm",  "z": -1.3 },
+            { "name": "rightUpperArm", "z":  1.3 }
+          ]}
         },
         {
           "label": "Marcia2P",
           "path": "assets/groupB/Marcia2P.vrm",
           "lipsync": { "sensitivity": 0.5, "maxMouthOpen": 1.0 },
-          "gaze": { "angleX": 0.08, "angleY": 0.05 }
+          "gaze": { "angleX": 0.08, "angleY": 0.05 },
+          "restPose": { "enabled": true, "bones": [
+            { "name": "leftUpperArm",  "z": -1.3 },
+            { "name": "rightUpperArm", "z":  1.3 }
+          ]}
         }
       ]
     }

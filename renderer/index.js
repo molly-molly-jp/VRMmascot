@@ -69,6 +69,16 @@ function mergeGaze(modelGaze) {
   return { ...(configCache.gaze ?? {}), ...(modelGaze ?? {}) };
 }
 
+// idleMotion はグローバル設定をそのまま使う（モデル個別設定は現時点では無し）
+function getIdleMotionConfig() {
+  return configCache.idleMotion ?? {};
+}
+
+function getRestPoseConfig(modelConf) {
+  // モデル個別設定があればそちらを優先、なければグローバルにフォールバック
+  return modelConf?.restPose ?? configCache.restPose ?? {};
+}
+
 async function applyGroupSettings(group) {
   const id = group.speakerId ?? 0;
   setSpeakerId(id);
@@ -91,7 +101,7 @@ api.onSwitchGroup(async (groupId) => {
   setStatus('モデル切り替え中...');
   await applyGroupSettings(group);
   const model = group.models[group.currentModel ?? 0];
-  try { await switchVRM(model.path, model.lipsync ?? {}, configCache.blink ?? {}, mergeGaze(model.gaze)); setStatus(''); }
+  try { await switchVRM(model.path, model.lipsync ?? {}, configCache.blink ?? {}, mergeGaze(model.gaze), getIdleMotionConfig(), getRestPoseConfig(model)); setStatus(''); }
   catch (e) { setStatus(`エラー: ${e.message}`); }
 });
 
@@ -101,7 +111,7 @@ api.onSwitchModel(async (modelPath) => {
   // config から modelPath に対応する lipsync 設定を逆引き
   const allModels = configCache?.groups?.flatMap(g => g.models) ?? [];
   const modelConf = allModels.find(m => m.path === modelPath);
-  try { await switchVRM(modelPath, modelConf?.lipsync ?? {}, configCache.blink ?? {}, mergeGaze(modelConf?.gaze)); setStatus(''); }
+  try { await switchVRM(modelPath, modelConf?.lipsync ?? {}, configCache.blink ?? {}, mergeGaze(modelConf?.gaze), getIdleMotionConfig(), getRestPoseConfig(modelConf)); setStatus(''); }
   catch (e) { setStatus(`エラー: ${e.message}`); }
 });
 
@@ -131,7 +141,7 @@ async function main() {
 
   setStatus('モデルを読み込んでいます...');
   try {
-    await initVRM('vrm-canvas', initialPath, firstModel?.lipsync ?? {}, configCache.blink ?? {}, mergeGaze(firstModel?.gaze));
+    await initVRM('vrm-canvas', initialPath, firstModel?.lipsync ?? {}, configCache.blink ?? {}, mergeGaze(firstModel?.gaze), getIdleMotionConfig(), getRestPoseConfig(firstModel));
     setStatus('');
   } catch (err) {
     console.error('[vrm-win] VRM初期化失敗:', err);

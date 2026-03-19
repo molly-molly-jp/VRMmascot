@@ -157,6 +157,136 @@ function setGazeConfig(cfg) {
   console.log('[VRM] 視線設定:', { gazeEnabled, gazeIntervalMin, gazeIntervalMax, gazeAngleX, gazeAngleY, gazeReturnSpeed });
 }
 
+// ── レストポーズ（Tポーズ→腕下げ等の初期姿勢補正） ────────────
+// VRMロード直後に一度だけ呼ぶ。idleMotion は上腕ボーンを触らないので競合しない。
+// config.jsonの restPose.bones で各ボーンの x/y/z オフセット（ラジアン）を指定する。
+function applyRestPose(vrm, cfg) {
+  if (!cfg?.enabled) return;
+  if (!vrm?.humanoid) return;
+
+  const boneCfgs = cfg?.bones ?? [];
+  for (const bc of boneCfgs) {
+    const node = vrm.humanoid.getNormalizedBoneNode(bc.name);
+    if (!node) {
+      console.warn('[VRM] restPose: ボーンが見つかりません:', bc.name);
+      continue;
+    }
+    if (bc.x != null) node.rotation.x = bc.x;
+    if (bc.y != null) node.rotation.y = bc.y;
+    if (bc.z != null) node.rotation.z = bc.z;
+    console.log('[VRM] restPose 適用:', bc.name,
+      'x:', node.rotation.x.toFixed(3),
+      'y:', node.rotation.y.toFixed(3),
+      'z:', node.rotation.z.toFixed(3));
+  }
+}
+
+// ── タスク9-4: 待機モーション（sin波ボーン揺れ） ────────────────
+//
+// 設計:
+//   各モーションエントリーが sin(2π × elapsedTime / period + phase) × amplitude を
+//   指定ボーン・指定軸に加算する。周期を素数秒（5・7・11等）にすることで
+//   重なりにくく自然な動きになる。
+//
+//   restPose適用後の基準回転を baseRotation として保存し、
+//   毎フレーム「基準 + sinデルタ合計」を書き込む（restPoseを壊さない）。
+//
+//   pauseIdleMotion()  : VRMA再生開始時に呼ぶ → elapsedTimeを凍結
+//   resumeIdleMotion() : VRMA再生終了後に呼ぶ → elapsedTimeを再加算開始
+//   ※ 一時停止中はボーン値を触らない（VRMAが制御するため）
+
+let idleMotionEnabled = true;
+let idleMotionPaused  = false;
+let idleElapsed       = 0.0;  // 累積秒数（pause中は止まる）
+
+// ランタイム: ボーンごとの状態（基準回転）
+// Map<boneName, { node, baseX, baseY, baseZ }>
+let idleMotionBoneState = new Map();
+
+// ランタイム: モーションエントリーリスト
+// [{ boneName, axis, period, amplitude, phase }, ...]
+let idleMotionEntries = [];
+
+export function pauseIdleMotion()  { idleMotionPaused = true;  }
+export function resumeIdleMotion() { idleMotionPaused = false; }
+
+/**
+ * VRMロード後（applyRestPose呼び出し後）に呼ぶ。
+ * 各ボーンの現在回転を baseRotation として記録してからエントリーを構築する。
+ */
+function setIdleMotionConfig(vrm, cfg) {
+  idleMotionBoneState.clear();
+  idleMotionEntries   = [];
+  idleMotionEnabled   = cfg?.enabled ?? true;
+  idleMotionPaused    = false;
+  idleElapsed         = 0.0;
+
+  if (!idleMotionEnabled || !vrm?.humanoid) {
+    if (idleMotionEnabled && !vrm?.humanoid)
+      console.warn('[VRM] 待機モーション: humanoidが見つかりません');
+    return;
+  }
+
+  for (const m of cfg?.motions ?? []) {
+    const node = vrm.humanoid.getNormalizedBoneNode(m.bone);
+    if (!node) {
+      console.warn('[VRM] 待機モーション: ボーン未発見:', m.bone);
+      continue;
+    }
+    // 初回登場ボーン → 現在回転（restPose適用済み）を基準として保存
+    if (!idleMotionBoneState.has(m.bone)) {
+      idleMotionBoneState.set(m.bone, {
+        node,
+        baseX: node.rotation.x,
+        baseY: node.rotation.y,
+        baseZ: node.rotation.z,
+      });
+    }
+    idleMotionEntries.push({
+      boneName:  m.bone,
+      axis:      m.axis      ?? 'x',
+      period:    m.period    ?? 7.0,
+      amplitude: m.amplitude ?? 0.02,
+      phase:     m.phase     ?? 0.0,
+    });
+  }
+
+  console.log('[VRM] 待機モーション(sin波)初期化:',
+    idleMotionEntries.length, 'エントリー /',
+    idleMotionBoneState.size, 'ボーン');
+}
+
+/**
+ * アニメーションループから毎フレーム呼ぶ。
+ * pauseIdleMotion() 中は elapsedTime を止め、ボーンも触らない。
+ */
+function updateIdleMotion(delta) {
+  if (!idleMotionEnabled || idleMotionBoneState.size === 0) return;
+  if (idleMotionPaused) return;
+
+  idleElapsed += delta;
+
+  // ── 各ボーンのsinデルタを集計 ──────────────────────────────
+  // Map<boneName, { dx, dy, dz }>
+  const deltas = new Map();
+  for (const e of idleMotionEntries) {
+    if (!deltas.has(e.boneName)) deltas.set(e.boneName, { dx: 0, dy: 0, dz: 0 });
+    const d   = deltas.get(e.boneName);
+    const val = Math.sin(2 * Math.PI * idleElapsed / e.period + e.phase) * e.amplitude;
+    if      (e.axis === 'x') d.dx += val;
+    else if (e.axis === 'y') d.dy += val;
+    else if (e.axis === 'z') d.dz += val;
+  }
+
+  // ── 基準回転 + sinデルタをボーンに書き込む ─────────────────
+  for (const [boneName, state] of idleMotionBoneState) {
+    const d = deltas.get(boneName) ?? { dx: 0, dy: 0, dz: 0 };
+    state.node.rotation.x = state.baseX + d.dx;
+    state.node.rotation.y = state.baseY + d.dy;
+    state.node.rotation.z = state.baseZ + d.dz;
+  }
+}
+
 function updateGaze(vrm, delta) {
   if (!gazeEnabled || !vrm.lookAt) return;
 
@@ -278,6 +408,7 @@ function startAnimLoop() {
       }
       updateBlink(currentVRM, delta);
       updateGaze(currentVRM, delta);
+      updateIdleMotion(delta);
       currentVRM.update(delta);
     }
     renderer.render(scene, camera);
@@ -304,7 +435,7 @@ export function getAlphaAtPixel(clientX, clientY) {
 
 // ── 公開API ───────────────────────────────────────────────────
 
-export async function initVRM(canvasId, vrmPath, lipsyncConfig = {}, blinkConfig = {}, gazeConfig = {}) {
+export async function initVRM(canvasId, vrmPath, lipsyncConfig = {}, blinkConfig = {}, gazeConfig = {}, idleMotionConfig = {}, restPoseConfig = {}) {
   const canvas = document.getElementById(canvasId);
   if (!canvas) throw new Error(`canvas#${canvasId} が見つかりません`);
   initScene(canvas);
@@ -317,13 +448,15 @@ export async function initVRM(canvasId, vrmPath, lipsyncConfig = {}, blinkConfig
   blinkExpr = resolveBlinkExpression(vrm);
   setBlinkConfig(blinkConfig);
   setGazeConfig(gazeConfig);
+  applyRestPose(vrm, restPoseConfig);
+  setIdleMotionConfig(vrm, idleMotionConfig);
   console.log('[VRM] 口パクExpression:', lipSyncExpressionName,
     '| sensitivity:', lipSyncSensitivity, '| maxMouthOpen:', lipSyncMaxMouthOpen);
   adjustCamera(vrm);
   startAnimLoop();
 }
 
-export async function switchVRM(vrmPath, lipsyncConfig = {}, blinkConfig = {}, gazeConfig = {}) {
+export async function switchVRM(vrmPath, lipsyncConfig = {}, blinkConfig = {}, gazeConfig = {}, idleMotionConfig = {}, restPoseConfig = {}) {
   console.log('[VRM] モデル切り替え:', vrmPath);
   if (currentVRM) {
     scene.remove(currentVRM.scene);
@@ -341,6 +474,8 @@ export async function switchVRM(vrmPath, lipsyncConfig = {}, blinkConfig = {}, g
   blinkExpr = resolveBlinkExpression(vrm);
   setBlinkConfig(blinkConfig);
   setGazeConfig(gazeConfig);
+  applyRestPose(vrm, restPoseConfig);
+  setIdleMotionConfig(vrm, idleMotionConfig);
   console.log('[VRM] 切り替え完了 口パクExpression:', lipSyncExpressionName,
     '| sensitivity:', lipSyncSensitivity, '| maxMouthOpen:', lipSyncMaxMouthOpen);
   adjustCamera(vrm);
