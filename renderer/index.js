@@ -1,5 +1,5 @@
 // renderer/index.js — VRMウィンドウ専用エントリーポイント
-import { initVRM, switchVRM, playMotion, getAlphaAtPixel } from './vrm.js';
+import { initSceneOnly, initVRM, switchVRM, playMotion, getAlphaAtPixel } from './vrm.js';
 import { speak, stopCurrentSpeech, setSpeakerId } from './voicevox.js';
 import { askAI } from './ai.js';
 import { setupVBCableAnalyser, teardownVBCable } from './lipsync.js';
@@ -98,11 +98,9 @@ api.onSwitchGroup(async (groupId) => {
   const group = configCache?.groups?.find(g => g.id === groupId);
   if (!group) return console.error('[vrm-win] グループ未発見:', groupId);
   clearQueueAndStop();
-  setStatus('モデル切り替え中...');
+  // グループ切り替え時はモデルをロードしない（口パクソース・話者IDの切り替えのみ）
   await applyGroupSettings(group);
-  const model = group.models[group.currentModel ?? 0];
-  try { await switchVRM(model.path, model.lipsync ?? {}, configCache.blink ?? {}, mergeGaze(model.gaze), getIdleMotionConfig(), getRestPoseConfig(model)); setStatus(''); }
-  catch (e) { setStatus(`エラー: ${e.message}`); }
+  console.log('[vrm-win] グループ切り替え完了:', groupId, '（モデルロードなし）');
 });
 
 api.onSwitchModel(async ({ path: modelPath, modelConf }) => {
@@ -276,17 +274,14 @@ api.onEntranceC(({ path: modelPath, modelConf, randomMotion, randomSound }) => {
 async function main() {
   configCache = await api.getConfig();
   const firstGroup = configCache.groups?.[0];
-  const firstModel = firstGroup?.models?.[0];
-  const initialPath = firstModel?.path || 'assets/model.vrm';
 
   if (firstGroup) await applyGroupSettings(firstGroup).catch(console.error);
 
-  setStatus('モデルを読み込んでいます...');
+  // シーンのみ初期化。モデルはロードしない（起動時は空の透過背景）
   try {
-    await initVRM('vrm-canvas', initialPath, firstModel?.lipsync ?? {}, configCache.blink ?? {}, mergeGaze(firstModel?.gaze), getIdleMotionConfig(), getRestPoseConfig(firstModel));
-    setStatus('');
+    initSceneOnly('vrm-canvas');
   } catch (err) {
-    console.error('[vrm-win] VRM初期化失敗:', err);
+    console.error('[vrm-win] シーン初期化失敗:', err);
     setStatus(`エラー: ${err.message}`);
   }
 }

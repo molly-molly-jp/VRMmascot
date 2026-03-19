@@ -569,6 +569,18 @@ export function getAlphaAtPixel(clientX, clientY) {
 
 // ── 公開API ───────────────────────────────────────────────────
 
+/**
+ * シーン・レンダラー・カメラの初期化のみ行う。VRMモデルはロードしない。
+ * 起動時の「空の画面」状態を作るために使う。
+ */
+export function initSceneOnly(canvasId) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) throw new Error(`canvas#${canvasId} が見つかりません`);
+  initScene(canvas);
+  startAnimLoop();   // currentVRM が null のまま空の透過背景をレンダリング開始
+  console.log('[VRM] シーン初期化完了（モデルなし）');
+}
+
 export async function initVRM(canvasId, vrmPath, lipsyncConfig = {}, blinkConfig = {}, gazeConfig = {}, idleMotionConfig = {}, restPoseConfig = {}) {
   const canvas = document.getElementById(canvasId);
   if (!canvas) throw new Error(`canvas#${canvasId} が見つかりません`);
