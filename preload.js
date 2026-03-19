@@ -42,6 +42,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   playMotion:    (motionPath) => ipcRenderer.send('ctrl-play-motion', motionPath),
   onPlayMotion:  (cb)         => ipcRenderer.on('do-play-motion', (_, p) => cb(p)),
 
+  // ── Phase 10-3: 登場演出A ────────────────────────────────────
+  entranceA:    (modelPath) => ipcRenderer.send('ctrl-entrance-a', modelPath),
+  onEntranceA:  (cb)        => ipcRenderer.on('do-entrance-a', (_, data) => cb(data)),
+
   // ── 共通 ────────────────────────────────────────────────────
   getConfig: () => ipcRenderer.invoke('get-config'),
 });

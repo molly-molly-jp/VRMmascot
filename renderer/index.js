@@ -146,6 +146,79 @@ api.onPlayMotion(async (motionPath) => {
   }
 });
 
+// ── Phase 10-3: 登場演出A ────────────────────────────────────
+// 音声再生ヘルパー（new Audio() 使用。fetch は file:// で不安定なため使わない）
+function _playEntranceSound(soundPath) {
+  if (!soundPath) return;
+  try {
+    const base     = window.location.href.replace(/\/renderer\/[^/]+$/, '');
+    const soundUrl = base + '/' + soundPath;
+    console.log('[vrm-win] 登場演出A: 音声再生:', soundUrl);
+    const audio = new Audio(soundUrl);
+    audio.play().catch(e => console.warn('[vrm-win] 登場演出A: 音声再生失敗:', e.message));
+  } catch (e) {
+    console.warn('[vrm-win] 登場演出A: 音声初期化失敗:', e.message);
+  }
+}
+
+api.onEntranceA(async ({ path: modelPath, modelConf }) => {
+  console.log('[vrm-win] 登場演出A 開始:', modelPath);
+  clearQueueAndStop();
+  setStatus('登場演出A 読み込み中...');
+
+  // ① モデルロード
+  try {
+    await switchVRM(
+      modelPath,
+      modelConf?.lipsync  ?? {},
+      configCache.blink   ?? {},
+      mergeGaze(modelConf?.gaze),
+      getIdleMotionConfig(),
+      getRestPoseConfig(modelConf)
+    );
+  } catch (e) {
+    console.error('[vrm-win] 登場演出A: switchVRM失敗:', e);
+    setStatus(`エラー: ${e.message}`);
+    return;
+  }
+
+  const patternA = modelConf?.entrance?.patternA;
+  if (!patternA?.motion) {
+    // motion未設定ならモデルロードのみ
+    console.warn('[vrm-win] 登場演出A: patternA.motion が未設定。モデルロードのみ実行。');
+    setStatus('');
+    return;
+  }
+
+  const { motion, sound, soundDelayMs = 0 } = patternA;
+  setStatus('登場演出A 再生中...');
+
+  // ② soundDelayMs に応じて VRMA と音声の開始タイミングをずらす
+  //    soundDelayMs = 0  → 同時開始
+  //    soundDelayMs > 0  → VRMAを先に開始し、soundDelayMs ms後に音声
+  //    soundDelayMs < 0  → 音声を先に開始し、|soundDelayMs| ms後にVRMA
+  try {
+    if (soundDelayMs < 0) {
+      // 音声を先に開始
+      _playEntranceSound(sound);
+      await new Promise(r => setTimeout(r, -soundDelayMs));
+      await playMotion(motion);
+    } else {
+      // VRMAと音声を同時 or 音声を遅らせて開始
+      if (soundDelayMs > 0) {
+        setTimeout(() => _playEntranceSound(sound), soundDelayMs);
+      } else {
+        _playEntranceSound(sound);
+      }
+      await playMotion(motion);
+    }
+  } catch (e) {
+    console.error('[vrm-win] 登場演出A: VRMA再生失敗:', e);
+  }
+
+  setStatus('');
+});
+
 // ─── 起動 ─────────────────────────────────────────────────────
 async function main() {
   configCache = await api.getConfig();

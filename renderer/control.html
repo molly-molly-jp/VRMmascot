@@ -118,6 +118,7 @@
         <option value="">— モデルを選択 —</option>
       </select>
       <button id="model-load-btn" class="btn">読み込み</button>
+      <button id="model-entrance-a-btn" class="btn" title="モデルを読み込み、登場演出Aを再生します">🎬 登場A</button>
     </div>
   </div>
 
@@ -277,6 +278,16 @@
         if (!p) { setStatus('モデルを選択してください'); return; }
         api.switchModel(p);
         setStatus('モデル読み込み中...');
+      });
+
+      // ─── Phase 10-3: 登場演出A ─────────────────────────────────
+      var modelEntranceABtn = document.getElementById('model-entrance-a-btn');
+      modelEntranceABtn.addEventListener('click', function() {
+        var p = modelSelect.value;
+        if (!p) { setStatus('モデルを選択してください'); return; }
+        api.entranceA(p);
+        setStatus('登場演出A 再生中...');
+        setTimeout(function() { setStatus(''); }, 2000);
       });
 
       // ─── Phase 10: モーションドロップダウン ─────────────────
