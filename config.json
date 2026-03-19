@@ -177,6 +177,11 @@
               "motion": "assets/motions/entrance_default.vrma",
               "sound": "assets/sounds/entrance_default.wav",
               "soundDelayMs": 0
+            },
+            "patternB": {
+              "motion": "",
+              "sound": "",
+              "soundDelayMs": 0
             }
           }
         },
@@ -208,6 +213,11 @@
             "patternA": {
               "motion": "assets/motions/entrance_default.vrma",
               "sound": "assets/sounds/entrance_default.wav",
+              "soundDelayMs": 0
+            },
+            "patternB": {
+              "motion": "",
+              "sound": "",
               "soundDelayMs": 0
             }
           }
@@ -250,6 +260,11 @@
               "motion": "assets/motions/entrance_default.vrma",
               "sound": "assets/sounds/entrance_default.wav",
               "soundDelayMs": 0
+            },
+            "patternB": {
+              "motion": "",
+              "sound": "",
+              "soundDelayMs": 0
             }
           }
         },
@@ -281,6 +296,11 @@
             "patternA": {
               "motion": "assets/motions/entrance_default.vrma",
               "sound": "assets/sounds/entrance_default.wav",
+              "soundDelayMs": 0
+            },
+            "patternB": {
+              "motion": "",
+              "sound": "",
               "soundDelayMs": 0
             }
           }
