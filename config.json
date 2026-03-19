@@ -125,19 +125,25 @@
           "restPose": {
             "enabled": true,
             "bones": [
-              { "name": "leftUpperArm",  "z":  1.3 },
-              { "name": "rightUpperArm", "z": -1.3 }
+              {
+                "name": "leftUpperArm",
+                "z": 1.3
+              },
+              {
+                "name": "rightUpperArm",
+                "z": -1.3
+              }
             ]
           },
           "entrance": {
             "patternA": {
               "motion": "assets/motions/entrance_default.vrma",
-              "sound":  "assets/sounds/entrance_default.wav",
-              "soundDelayMs": 0            
+              "sound": "assets/sounds/entrance_default.wav",
+              "soundDelayMs": 0
             },
             "patternB": {
               "motion": "assets/motions/entrance_custom.vrma",
-              "sound":  "assets/sounds/entrance_custom.wav",
+              "sound": "assets/sounds/entrance_custom.wav",
               "soundDelayMs": 0
             }
           }
@@ -156,14 +162,20 @@
           "restPose": {
             "enabled": true,
             "bones": [
-              { "name": "leftUpperArm",  "z":  1.3 },
-              { "name": "rightUpperArm", "z": -1.3 }
+              {
+                "name": "leftUpperArm",
+                "z": 1.3
+              },
+              {
+                "name": "rightUpperArm",
+                "z": -1.3
+              }
             ]
           },
           "entrance": {
             "patternA": {
               "motion": "assets/motions/entrance_default.vrma",
-              "sound":  "assets/sounds/entrance_default.wav",
+              "sound": "assets/sounds/entrance_default.wav",
               "soundDelayMs": 0
             }
           }
@@ -182,14 +194,20 @@
           "restPose": {
             "enabled": true,
             "bones": [
-              { "name": "leftUpperArm",  "z":  1.3 },
-              { "name": "rightUpperArm", "z": -1.3 }
+              {
+                "name": "leftUpperArm",
+                "z": 1.3
+              },
+              {
+                "name": "rightUpperArm",
+                "z": -1.3
+              }
             ]
           },
           "entrance": {
             "patternA": {
               "motion": "assets/motions/entrance_default.vrma",
-              "sound":  "assets/sounds/entrance_default.wav",
+              "sound": "assets/sounds/entrance_default.wav",
               "soundDelayMs": 0
             }
           }
@@ -217,14 +235,20 @@
           "restPose": {
             "enabled": true,
             "bones": [
-              { "name": "leftUpperArm",  "z": -1.3 },
-              { "name": "rightUpperArm", "z":  1.3 }
+              {
+                "name": "leftUpperArm",
+                "z": -1.3
+              },
+              {
+                "name": "rightUpperArm",
+                "z": 1.3
+              }
             ]
           },
           "entrance": {
             "patternA": {
               "motion": "assets/motions/entrance_default.vrma",
-              "sound":  "assets/sounds/entrance_default.wav",
+              "sound": "assets/sounds/entrance_default.wav",
               "soundDelayMs": 0
             }
           }
@@ -243,14 +267,20 @@
           "restPose": {
             "enabled": true,
             "bones": [
-              { "name": "leftUpperArm",  "z": -1.3 },
-              { "name": "rightUpperArm", "z":  1.3 }
+              {
+                "name": "leftUpperArm",
+                "z": -1.3
+              },
+              {
+                "name": "rightUpperArm",
+                "z": 1.3
+              }
             ]
           },
           "entrance": {
             "patternA": {
               "motion": "assets/motions/entrance_default.vrma",
-              "sound":  "assets/sounds/entrance_default.wav",
+              "sound": "assets/sounds/entrance_default.wav",
               "soundDelayMs": 0
             }
           }
@@ -269,15 +299,58 @@
           "restPose": {
             "enabled": true,
             "bones": [
-              { "name": "leftUpperArm",  "z":  1.3 },
-              { "name": "rightUpperArm", "z": -1.3 }
+              {
+                "name": "leftUpperArm",
+                "z": 1.3
+              },
+              {
+                "name": "rightUpperArm",
+                "z": -1.3
+              }
             ]
           },
           "entrance": {
             "patternA": {
               "motion": "assets/motions/entrance_default.vrma",
-              "sound":  "assets/sounds/entrance_default.wav",
+              "sound": "assets/sounds/entrance_default.wav",
               "soundDelayMs": 3000
+            }
+          }
+        },
+        {
+          "label": "QuQu_U",
+          "path": "assets/groupB/QuQu_U.vrm",
+          "lipsync": {
+            "sensitivity": 1,
+            "maxMouthOpen": 1
+          },
+          "gaze": {
+            "angleX": 0.08,
+            "angleY": 0.05
+          },
+          "restPose": {
+            "enabled": true,
+            "bones": [
+              {
+                "name": "leftUpperArm",
+                "z": 1.3
+              },
+              {
+                "name": "rightUpperArm",
+                "z": -1.3
+              }
+            ]
+          },
+          "entrance": {
+            "patternA": {
+              "motion": "",
+              "sound": "",
+              "soundDelayMs": 0
+            },
+            "patternB": {
+              "motion": "",
+              "sound": "",
+              "soundDelayMs": 0
             }
           }
         }

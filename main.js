@@ -70,6 +70,18 @@ function ensureModelInConfig(config, modelPath) {
         { name: 'leftUpperArm',  z:  1.3 },
         { name: 'rightUpperArm', z: -1.3 }
       ]
+    },
+    entrance: {
+      patternA: {
+        motion: '',
+        sound:  '',
+        soundDelayMs: 0
+      },
+      patternB: {
+        motion: '',
+        sound:  '',
+        soundDelayMs: 0
+      }
     }
   };
 
