@@ -66,6 +66,17 @@
     #dom-toggle-btn { min-width: 130px; }
     #dom-toggle-btn.dom-on  { background: rgba(60,200,100,0.2); border-color: rgba(60,200,100,0.5); color: #3dcc91; }
     #dom-toggle-btn.dom-off { background: rgba(255,80,80,0.15); border-color: rgba(255,80,80,0.35); color: #f38ba8; }
+    /* Phase 10: ドロップダウン＋モーション */
+    .select-row { display: flex; gap: 6px; align-items: center; }
+    select.ctrl-select {
+      flex: 1; padding: 5px 8px;
+      border: 1px solid rgba(255,255,255,0.2); border-radius: 6px;
+      background: rgba(255,255,255,0.07); color: #cdd6f4;
+      font-size: 12px; font-family: inherit; outline: none; cursor: pointer;
+      appearance: none; -webkit-appearance: none;
+    }
+    select.ctrl-select:focus { border-color: #4a9eff; }
+    select.ctrl-select option { background: #1e1e2e; color: #cdd6f4; }
     .input-row { display: flex; gap: 6px; align-items: flex-end; }
     #text-input {
       flex: 1; min-width: 0; padding: 6px 10px;
@@ -102,7 +113,22 @@
 
   <div class="section">
     <div class="section-label">モデル</div>
-    <div class="btn-row" id="model-bar"></div>
+    <div class="select-row">
+      <select id="model-select" class="ctrl-select">
+        <option value="">— モデルを選択 —</option>
+      </select>
+      <button id="model-load-btn" class="btn">読み込み</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">モーション（VRMA）</div>
+    <div class="select-row">
+      <select id="motion-select" class="ctrl-select">
+        <option value="">— モーションを選択 —</option>
+      </select>
+      <button id="motion-play-btn" class="btn">▶ 再生</button>
+    </div>
   </div>
 
   <div class="section">
@@ -141,7 +167,6 @@
 
     waitForAPI(function(api) {
       var groupBar      = document.getElementById('group-bar');
-      var modelBar      = document.getElementById('model-bar');
       var textInput     = document.getElementById('text-input');
       var sendBtn       = document.getElementById('send-btn');
       var clearBtn      = document.getElementById('clear-btn');
@@ -213,32 +238,71 @@
           btn.addEventListener('click', function() {
             if (i === currentGroupIdx) return;
             currentGroupIdx = i;
-            configData.groups[i].currentModel = 0;
             renderGroupButtons();
-            renderModelButtons();
+            populateModelSelect(g.id);
             api.switchGroup(g.id);
           });
           groupBar.appendChild(btn);
         });
       }
 
-      // ─── モデルボタン ────────────────────────────────────────
-      function renderModelButtons() {
-        modelBar.innerHTML = '';
-        var group = configData.groups[currentGroupIdx];
-        group.models.forEach(function(m, i) {
-          var btn = document.createElement('button');
-          btn.className   = 'btn' + (i === group.currentModel ? ' active-model' : '');
-          btn.textContent = m.label;
-          btn.addEventListener('click', function() {
-            if (i === group.currentModel) return;
-            group.currentModel = i;
-            renderModelButtons();
-            api.switchModel(m.path);
+      // ─── Phase 10: モデルドロップダウン ─────────────────────
+      var modelSelect   = document.getElementById('model-select');
+      var modelLoadBtn  = document.getElementById('model-load-btn');
+
+      function populateModelSelect(groupId) {
+        modelSelect.innerHTML = '<option value="">— モデルを選択 —</option>';
+        api.scanVrmFiles(groupId).then(function(files) {
+          files.forEach(function(f) {
+            var opt = document.createElement('option');
+            opt.value       = f.path;
+            opt.textContent = f.label;
+            modelSelect.appendChild(opt);
           });
-          modelBar.appendChild(btn);
+          // 現在グループのカレントモデルを初期選択
+          var group = configData.groups[currentGroupIdx];
+          if (group && group.models && group.models.length > 0) {
+            var currentPath = group.models[group.currentModel ?? 0]?.path;
+            if (currentPath) modelSelect.value = currentPath;
+          }
+          setStatus('');
+        }).catch(function(err) {
+          setStatus('モデル一覧取得失敗: ' + err.message);
         });
       }
+
+      modelLoadBtn.addEventListener('click', function() {
+        var p = modelSelect.value;
+        if (!p) { setStatus('モデルを選択してください'); return; }
+        api.switchModel(p);
+        setStatus('モデル読み込み中...');
+      });
+
+      // ─── Phase 10: モーションドロップダウン ─────────────────
+      var motionSelect  = document.getElementById('motion-select');
+      var motionPlayBtn = document.getElementById('motion-play-btn');
+
+      function populateMotionSelect() {
+        motionSelect.innerHTML = '<option value="">— モーションを選択 —</option>';
+        api.scanVrmaFiles().then(function(files) {
+          files.forEach(function(f) {
+            var opt = document.createElement('option');
+            opt.value       = f.path;
+            opt.textContent = f.label;
+            motionSelect.appendChild(opt);
+          });
+        }).catch(function(err) {
+          console.warn('[ctrl] VRMA一覧取得失敗:', err.message);
+        });
+      }
+
+      motionPlayBtn.addEventListener('click', function() {
+        var p = motionSelect.value;
+        if (!p) { setStatus('モーションを選択してください'); return; }
+        api.playMotion(p);
+        setStatus('モーション再生中...');
+        setTimeout(function() { setStatus(''); }, 1500);
+      });
 
       // ─── テキスト送信 ────────────────────────────────────────
       function sendText() {
@@ -276,7 +340,9 @@
           return;
         }
         renderGroupButtons();
-        renderModelButtons();
+        var firstGroup = configData.groups[currentGroupIdx];
+        if (firstGroup) populateModelSelect(firstGroup.id);
+        populateMotionSelect();
         setStatus('');
         textInput.focus();
       }).catch(function(err) {

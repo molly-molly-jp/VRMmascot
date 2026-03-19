@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
+import { VRMAnimationLoaderPlugin, createVRMAnimationClip } from '@pixiv/three-vrm-animation';
 import { getLipSyncValue } from './lipsync.js';
 
 export let currentVRM = null;
@@ -12,8 +13,79 @@ let lipSyncSensitivity  = 1.0;
 let lipSyncMaxMouthOpen = 1.0;
 
 let renderer, scene, camera;
+
+// VRMローダー（VRMモデル用）
 const loader = new GLTFLoader();
 loader.register((parser) => new VRMLoaderPlugin(parser));
+
+// VRMAローダー（VRMAモーション用）
+const vrmaLoader = new GLTFLoader();
+vrmaLoader.register((parser) => new VRMAnimationLoaderPlugin(parser));
+
+// ── タスク10-1: VRMAモーション再生 ──────────────────────────────
+let currentMixer    = null;   // THREE.AnimationMixer
+let currentClipAction = null; // AnimationAction（停止用）
+let isPlayingVRMA   = false;  // VRMA再生中フラグ
+
+/**
+ * VRMAモーションを再生する。
+ * 再生中は pauseIdleMotion() を呼び、待機モーションを一時停止する。
+ * 再生終了後に resumeIdleMotion() を自動呼出し。
+ * @param {string} vrmaPath  assets/motions/xxx.vrma のような相対パス
+ */
+export async function playMotion(vrmaPath) {
+  if (!currentVRM) {
+    console.warn('[VRM] playMotion: VRMがロードされていません');
+    return;
+  }
+
+  // 既再生中なら停止してリセット
+  if (currentMixer && currentClipAction) {
+    currentClipAction.stop();
+    currentMixer.stopAllAction();
+    currentMixer = null;
+    currentClipAction = null;
+    isPlayingVRMA = false;
+    resumeIdleMotion();
+  }
+
+  const vrmaUrl = getBaseUrl() + '/' + vrmaPath;
+  console.log('[VRM] VRMA読み込み:', vrmaUrl);
+
+  let gltf;
+  try {
+    gltf = await vrmaLoader.loadAsync(vrmaUrl);
+  } catch (e) {
+    console.error('[VRM] VRMA読み込み失敗:', e.message);
+    return;
+  }
+
+  const vrmAnimation = gltf.userData.vrmAnimations?.[0];
+  if (!vrmAnimation) {
+    console.error('[VRM] vrmAnimations が見つかりません');
+    return;
+  }
+
+  const clip = createVRMAnimationClip(vrmAnimation, currentVRM);
+  currentMixer = new THREE.AnimationMixer(currentVRM.scene);
+  currentClipAction = currentMixer.clipAction(clip);
+  currentClipAction.setLoop(THREE.LoopOnce, 1);
+  currentClipAction.clampWhenFinished = true;
+  currentClipAction.play();
+
+  isPlayingVRMA = true;
+  pauseIdleMotion();  // 待機モーションを止める
+  console.log('[VRM] VRMA再生開始:', vrmaPath);
+
+  // 再生終了イベント → 待機モーション再開
+  currentMixer.addEventListener('finished', () => {
+    console.log('[VRM] VRMA再生終了 → 待機モーション再開');
+    isPlayingVRMA = false;
+    resumeIdleMotion();
+    currentMixer = null;
+    currentClipAction = null;
+  });
+}
 
 function getBaseUrl() {
   return window.location.href.replace(/\/renderer\/[^/]+$/, '');
@@ -409,6 +481,7 @@ function startAnimLoop() {
       updateBlink(currentVRM, delta);
       updateGaze(currentVRM, delta);
       updateIdleMotion(delta);
+      if (currentMixer) currentMixer.update(delta);  // VRMA進行
       currentVRM.update(delta);
     }
     renderer.render(scene, camera);
@@ -458,6 +531,13 @@ export async function initVRM(canvasId, vrmPath, lipsyncConfig = {}, blinkConfig
 
 export async function switchVRM(vrmPath, lipsyncConfig = {}, blinkConfig = {}, gazeConfig = {}, idleMotionConfig = {}, restPoseConfig = {}) {
   console.log('[VRM] モデル切り替え:', vrmPath);
+  // VRMA再生中なら停止
+  if (currentMixer) {
+    currentMixer.stopAllAction();
+    currentMixer = null;
+    currentClipAction = null;
+    isPlayingVRMA = false;
+  }
   if (currentVRM) {
     scene.remove(currentVRM.scene);
     VRMUtils.deepDispose(currentVRM.scene);

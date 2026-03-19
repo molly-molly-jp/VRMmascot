@@ -11,11 +11,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setIgnoreMouseEvents: (ignore) => ipcRenderer.send('set-ignore-mouse-events', ignore),
 
   // ── VRMウィンドウ用: コマンド受信 ──────────────────────────
-  onSpeakQueue:  (cb) => ipcRenderer.on('speak-queue',     (_, t)  => cb(t)),
-  onSwitchGroup: (cb) => ipcRenderer.on('do-switch-group', (_, id) => cb(id)),
-  onSwitchModel: (cb) => ipcRenderer.on('do-switch-model', (_, p)  => cb(p)),
-  onSendText:    (cb) => ipcRenderer.on('do-send-text',    (_, t)  => cb(t)),
-  onClearQueue:  (cb) => ipcRenderer.on('do-clear-queue',  ()      => cb()),
+  onSpeakQueue:  (cb) => ipcRenderer.on('speak-queue',     (_, t)    => cb(t)),
+  onSwitchGroup: (cb) => ipcRenderer.on('do-switch-group', (_, id)   => cb(id)),
+  onSwitchModel: (cb) => ipcRenderer.on('do-switch-model', (_, data) => cb(data)),
+  onSendText:    (cb) => ipcRenderer.on('do-send-text',    (_, t)    => cb(t)),
+  onClearQueue:  (cb) => ipcRenderer.on('do-clear-queue',  ()        => cb()),
 
   // ── VRMウィンドウ用: ステータスをコントロールへ通知 ────────
   sendStatus: (text) => ipcRenderer.send('vrm-status', text),
@@ -35,6 +35,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // ── Phase 8: DOM受信トグル ──────────────────────────────────
   toggleDomReceive:   () => ipcRenderer.invoke('ctrl-toggle-dom-receive'),
   getDomReceiveState: () => ipcRenderer.invoke('get-dom-receive-state'),
+
+  // ── Phase 10: フォルダスキャン＆モーション再生 ────────────────
+  scanVrmFiles:  (groupId)    => ipcRenderer.invoke('scan-vrm-files', groupId),
+  scanVrmaFiles: ()           => ipcRenderer.invoke('scan-vrma-files'),
+  playMotion:    (motionPath) => ipcRenderer.send('ctrl-play-motion', motionPath),
+  onPlayMotion:  (cb)         => ipcRenderer.on('do-play-motion', (_, p) => cb(p)),
 
   // ── 共通 ────────────────────────────────────────────────────
   getConfig: () => ipcRenderer.invoke('get-config'),

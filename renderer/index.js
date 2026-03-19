@@ -1,5 +1,5 @@
 // renderer/index.js — VRMウィンドウ専用エントリーポイント
-import { initVRM, switchVRM, getAlphaAtPixel } from './vrm.js';
+import { initVRM, switchVRM, playMotion, getAlphaAtPixel } from './vrm.js';
 import { speak, stopCurrentSpeech, setSpeakerId } from './voicevox.js';
 import { askAI } from './ai.js';
 import { setupVBCableAnalyser, teardownVBCable } from './lipsync.js';
@@ -105,14 +105,20 @@ api.onSwitchGroup(async (groupId) => {
   catch (e) { setStatus(`エラー: ${e.message}`); }
 });
 
-api.onSwitchModel(async (modelPath) => {
+api.onSwitchModel(async ({ path: modelPath, modelConf }) => {
   clearQueueAndStop();
   setStatus('モデル切り替え中...');
-  // config から modelPath に対応する lipsync 設定を逆引き
-  const allModels = configCache?.groups?.flatMap(g => g.models) ?? [];
-  const modelConf = allModels.find(m => m.path === modelPath);
-  try { await switchVRM(modelPath, modelConf?.lipsync ?? {}, configCache.blink ?? {}, mergeGaze(modelConf?.gaze), getIdleMotionConfig(), getRestPoseConfig(modelConf)); setStatus(''); }
-  catch (e) { setStatus(`エラー: ${e.message}`); }
+  try {
+    await switchVRM(
+      modelPath,
+      modelConf?.lipsync   ?? {},
+      configCache.blink    ?? {},
+      mergeGaze(modelConf?.gaze),
+      getIdleMotionConfig(),
+      getRestPoseConfig(modelConf)
+    );
+    setStatus('');
+  } catch (e) { setStatus(`エラー: ${e.message}`); }
 });
 
 api.onSendText(async (userText) => {
@@ -129,6 +135,16 @@ api.onSendText(async (userText) => {
 
 api.onClearQueue(() => clearQueueAndStop());
 api.onSpeakQueue((text) => enqueue(text));
+
+// ── Phase 10: VRMAモーション再生 ─────────────────────────────
+api.onPlayMotion(async (motionPath) => {
+  console.log('[vrm-win] VRMA再生要求:', motionPath);
+  try {
+    await playMotion(motionPath);
+  } catch (err) {
+    console.error('[vrm-win] VRMA再生失敗:', err);
+  }
+});
 
 // ─── 起動 ─────────────────────────────────────────────────────
 async function main() {

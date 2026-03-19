@@ -3,6 +3,10 @@ const path = require('path');
 const fs   = require('fs');
 const http = require('http');
 
+// AudioContext をユーザージェスチャーなしで再開できるようにする
+// Ctrl+Q のようなグローバルショートカット経由では UI 操作がないため必要
+app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
+
 let vrmWin;
 let ctrlWin;
 
@@ -21,6 +25,60 @@ function loadConfig() {
     console.error('[main] config.json読み込み失敗:', e.message);
     return { shortcutKey: 'Ctrl+Shift+R', groups: [] };
   }
+}
+
+function saveConfig(config) {
+  try {
+    const configPath = path.join(__dirname, 'config.json');
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
+    console.log('[main] config.json 保存完了');
+  } catch (e) {
+    console.error('[main] config.json 保存失敗:', e.message);
+  }
+}
+
+/**
+ * modelPath に対応するモデル設定を config から探して返す。
+ * 未登録の場合はデフォルト設定を生成して config.json に追記し、そのオブジェクトを返す。
+ * @returns {object} モデル設定オブジェクト
+ */
+function ensureModelInConfig(config, modelPath) {
+  // 全グループからモデルを探す
+  for (const group of config.groups ?? []) {
+    const found = (group.models ?? []).find(m => m.path === modelPath);
+    if (found) return found; // 既登録
+  }
+
+  // 未登録: パスから groupId を推定 (assets/groupA/... → A)
+  const groupMatch = modelPath.match(/assets\/group([^/]+)\//i);
+  const groupId    = groupMatch ? groupMatch[1].toUpperCase() : null;
+  const group      = config.groups?.find(g => g.id === groupId);
+  if (!group) {
+    console.warn('[main] ensureModelInConfig: グループ未発見 path:', modelPath);
+    return {}; // デフォルト空オブジェクト
+  }
+
+  const label = path.basename(modelPath, '.vrm');
+  const defaultEntry = {
+    label,
+    path: modelPath,
+    lipsync:  { sensitivity: 1.0, maxMouthOpen: 1.0 },
+    gaze:     { angleX: 0.08, angleY: 0.05 },
+    restPose: {
+      enabled: true,
+      bones: [
+        { name: 'leftUpperArm',  z:  1.3 },
+        { name: 'rightUpperArm', z: -1.3 }
+      ]
+    }
+  };
+
+  group.models = group.models ?? [];
+  group.models.push(defaultEntry);
+  saveConfig(config);
+  console.log(`[main] 新モデルをconfig.jsonに追記: ${modelPath}`);
+  console.log('[main] ※ lipsync・gaze・restPoseはデフォルト値です。config.jsonを編集して調整してください。');
+  return defaultEntry;
 }
 
 function createVRMWindow() {
@@ -79,7 +137,7 @@ function createControlWindow() {
 
   ctrlWin = new BrowserWindow({
     width:  360,
-    height: 440,
+    height: 520,
     x: target.bounds.x + 20,
     y: target.bounds.y + 20,
     resizable: true,
@@ -110,7 +168,9 @@ function setupIPC(config) {
     if (vrmWin && !vrmWin.isDestroyed()) vrmWin.webContents.send('do-switch-group', id);
   });
   ipcMain.on('ctrl-switch-model', (_, p) => {
-    if (vrmWin && !vrmWin.isDestroyed()) vrmWin.webContents.send('do-switch-model', p);
+    const modelConf = ensureModelInConfig(config, p);
+    if (vrmWin && !vrmWin.isDestroyed())
+      vrmWin.webContents.send('do-switch-model', { path: p, modelConf });
   });
   ipcMain.on('ctrl-send-text', (_, t) => {
     if (vrmWin && !vrmWin.isDestroyed()) vrmWin.webContents.send('do-send-text', t);
@@ -134,6 +194,37 @@ function setupIPC(config) {
   });
 
   ipcMain.handle('get-dom-receive-state', () => domReceiveEnabled);
+
+  // ── Phase 10: フォルダスキャン ────────────────────────────────
+  ipcMain.handle('scan-vrm-files', (_, groupId) => {
+    const folderName = 'group' + groupId;
+    const folderPath = path.join(__dirname, 'assets', folderName);
+    if (!fs.existsSync(folderPath)) return [];
+    return fs.readdirSync(folderPath)
+      .filter(f => f.toLowerCase().endsWith('.vrm'))
+      .sort()
+      .map(f => ({
+        label: f.replace(/\.vrm$/i, ''),
+        path:  `assets/${folderName}/${f}`
+      }));
+  });
+
+  ipcMain.handle('scan-vrma-files', () => {
+    const folderPath = path.join(__dirname, 'assets', 'motions');
+    if (!fs.existsSync(folderPath)) return [];
+    return fs.readdirSync(folderPath)
+      .filter(f => f.toLowerCase().endsWith('.vrma'))
+      .sort()
+      .map(f => ({
+        label: f.replace(/\.vrma$/i, ''),
+        path:  `assets/motions/${f}`
+      }));
+  });
+
+  // モーション再生コマンドをVRMウィンドウへ中継
+  ipcMain.on('ctrl-play-motion', (_, motionPath) => {
+    if (vrmWin && !vrmWin.isDestroyed()) vrmWin.webContents.send('do-play-motion', motionPath);
+  });
 }
 
 function setupShortcut(config) {
