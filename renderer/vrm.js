@@ -77,13 +77,35 @@ export async function playMotion(vrmaPath) {
   pauseIdleMotion();  // 待機モーションを止める
   console.log('[VRM] VRMA再生開始:', vrmaPath);
 
-  // 再生終了イベント → 待機モーション再開
+  // 再生終了イベント → なめらか復帰フェーズへ移行
   currentMixer.addEventListener('finished', () => {
-    console.log('[VRM] VRMA再生終了 → 待機モーション再開');
+    console.log('[VRM] VRMA再生終了 → 復帰フェーズ開始 (', returnToRestDuration, '秒)');
     isPlayingVRMA = false;
-    resumeIdleMotion();
-    currentMixer = null;
+    // clampWhenFinished=true によるボーン固定を解除
+    currentClipAction.stop();
+    currentMixer.stopAllAction();
+    currentMixer     = null;
     currentClipAction = null;
+
+    // 復帰フェーズ: VRMA終了時のボーン姿勢をスナップショットとして保存
+    returnToRestSnapshot.clear();
+    for (const [boneName, state] of idleMotionBoneState) {
+      returnToRestSnapshot.set(boneName, {
+        x: state.node.rotation.x,
+        y: state.node.rotation.y,
+        z: state.node.rotation.z,
+      });
+    }
+
+    if (idleMotionBoneState.size > 0 && returnToRestDuration > 0) {
+      // 管理下のボーンがある場合はなめらか補間
+      returnToRestProgress = 0.0;
+      isReturningToRest    = true;
+      // idleMotionPaused は true のまま → updateIdleMotion の復帰フェーズが管理
+    } else {
+      // 待機モーション未設定のときは即時再開
+      resumeIdleMotion();
+    }
   });
 }
 
@@ -271,6 +293,13 @@ let idleMotionEnabled = true;
 let idleMotionPaused  = false;
 let idleElapsed       = 0.0;  // 累積秒数（pause中は止まる）
 
+// VRMA終了後のなめらか復帰フェーズ
+let isReturningToRest    = false;
+let returnToRestProgress = 0.0;   // 0.0 → 1.0
+let returnToRestDuration = 0.8;   // 秒（config.json の idleMotion.returnDuration で上書き）
+// boneName → { x, y, z }  VRMA終了直後のボーン姿勢スナップショット
+const returnToRestSnapshot = new Map();
+
 // ランタイム: ボーンごとの状態（基準回転）
 // Map<boneName, { node, baseX, baseY, baseZ }>
 let idleMotionBoneState = new Map();
@@ -280,7 +309,11 @@ let idleMotionBoneState = new Map();
 let idleMotionEntries = [];
 
 export function pauseIdleMotion()  { idleMotionPaused = true;  }
-export function resumeIdleMotion() { idleMotionPaused = false; }
+export function resumeIdleMotion() {
+  idleMotionPaused    = false;
+  isReturningToRest   = false;   // 外から強制再開する場合もリセット
+  returnToRestProgress = 0.0;
+}
 
 /**
  * VRMロード後（applyRestPose呼び出し後）に呼ぶ。
@@ -292,6 +325,10 @@ function setIdleMotionConfig(vrm, cfg) {
   idleMotionEnabled   = cfg?.enabled ?? true;
   idleMotionPaused    = false;
   idleElapsed         = 0.0;
+  returnToRestDuration = cfg?.returnDuration ?? 0.8;
+  isReturningToRest    = false;
+  returnToRestProgress = 0.0;
+  returnToRestSnapshot.clear();
 
   if (!idleMotionEnabled || !vrm?.humanoid) {
     if (idleMotionEnabled && !vrm?.humanoid)
@@ -334,6 +371,30 @@ function setIdleMotionConfig(vrm, cfg) {
  */
 function updateIdleMotion(delta) {
   if (!idleMotionEnabled || idleMotionBoneState.size === 0) return;
+
+  // ── VRMA終了後の復帰フェーズ ────────────────────────────────
+  // VRMA終了ポーズ → baseRotation へ returnToRestDuration 秒でイーズイン/アウト補間
+  if (isReturningToRest) {
+    returnToRestProgress += delta / returnToRestDuration;
+    const t    = Math.min(returnToRestProgress, 1.0);
+    const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; // easeInOut
+    for (const [boneName, state] of idleMotionBoneState) {
+      const snap = returnToRestSnapshot.get(boneName);
+      if (!snap) continue;
+      state.node.rotation.x = snap.x + (state.baseX - snap.x) * ease;
+      state.node.rotation.y = snap.y + (state.baseY - snap.y) * ease;
+      state.node.rotation.z = snap.z + (state.baseZ - snap.z) * ease;
+    }
+    if (returnToRestProgress >= 1.0) {
+      // 補間完了 → 待機モーション再開
+      isReturningToRest = false;
+      idleMotionPaused  = false;
+      idleElapsed       = 0.0;   // elapsedをリセットして自然な頭出しから再開
+      console.log('[VRM] 復帰完了 → 待機モーション再開');
+    }
+    return; // 復帰フェーズ中は通常の待機モーションを動かさない
+  }
+
   if (idleMotionPaused) return;
 
   idleElapsed += delta;
