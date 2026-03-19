@@ -217,6 +217,61 @@ async function _runEntrance(modelPath, modelConf, patternKey, label) {
 api.onEntranceA(({ path: modelPath, modelConf }) => _runEntrance(modelPath, modelConf, 'patternA', 'A'));
 api.onEntranceB(({ path: modelPath, modelConf }) => _runEntrance(modelPath, modelConf, 'patternB', 'B'));
 
+// ── Phase 10-3: 登場演出C（ランダム抽選） ────────────────────
+api.onEntranceC(({ path: modelPath, modelConf, randomMotion, randomSound }) => {
+  console.log('[vrm-win] 登場演出C 開始:', modelPath, '| motion:', randomMotion, '| sound:', randomSound);
+  (async () => {
+    clearQueueAndStop();
+    setStatus('登場演出C 読み込み中...');
+
+    // ① モデルロード
+    try {
+      await switchVRM(
+        modelPath,
+        modelConf?.lipsync  ?? {},
+        configCache.blink   ?? {},
+        mergeGaze(modelConf?.gaze),
+        getIdleMotionConfig(),
+        getRestPoseConfig(modelConf)
+      );
+    } catch (e) {
+      console.error('[vrm-win] 登場演出C: switchVRM失敗:', e);
+      setStatus(`エラー: ${e.message}`);
+      return;
+    }
+
+    if (!randomMotion) {
+      console.warn('[vrm-win] 登場演出C: VRMAが見つかりませんでした。モデルロードのみ実行。');
+      setStatus('');
+      return;
+    }
+
+    // soundDelayMs は patternC.soundDelayMs → なければ 0
+    const soundDelayMs = modelConf?.entrance?.patternC?.soundDelayMs ?? 0;
+    setStatus('登場演出C 再生中...');
+
+    // ② soundDelayMs に応じて VRMA と音声の開始タイミングをずらす
+    try {
+      if (soundDelayMs < 0) {
+        _playEntranceSound(randomSound);
+        await new Promise(r => setTimeout(r, -soundDelayMs));
+        await playMotion(randomMotion);
+      } else {
+        await playMotion(randomMotion);
+        if (soundDelayMs === 0) {
+          _playEntranceSound(randomSound);
+        } else {
+          setTimeout(() => _playEntranceSound(randomSound), soundDelayMs);
+        }
+      }
+    } catch (e) {
+      console.error('[vrm-win] 登場演出C: VRMA再生失敗:', e);
+    }
+
+    setStatus('');
+  })();
+});
+
 // ─── 起動 ─────────────────────────────────────────────────────
 async function main() {
   configCache = await api.getConfig();
