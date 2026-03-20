@@ -238,6 +238,16 @@ function setupIPC(config) {
     if (vrmWin && !vrmWin.isDestroyed()) vrmWin.webContents.send('do-play-motion', motionPath);
   });
 
+  // ── Phase 11: カメラ操作ON/OFFトグル ─────────────────────────
+  let cameraOn = false;
+  ipcMain.handle('ctrl-toggle-camera', () => {
+    cameraOn = !cameraOn;
+    console.log('[main] カメラ操作:', cameraOn ? 'ON' : 'OFF');
+    if (vrmWin && !vrmWin.isDestroyed())
+      vrmWin.webContents.send('do-camera-toggle', cameraOn);
+    return cameraOn;
+  });
+
   // ── Phase 10-3: 登場演出A ────────────────────────────────────
   // modelPath を受け取り、modelConf（entrance.patternA含む）を付けてVRMウィンドウへ転送
   ipcMain.on('ctrl-entrance-a', (_, modelPath) => {

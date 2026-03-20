@@ -38,6 +38,17 @@
     const canvas = document.getElementById('vrm-canvas');
     let dragging = false;
 
+    // ── Phase 11: カメラオービット用ドラッグ変数 ─────────────────
+    let camDragging  = false;
+    let camLastX     = 0;
+    let camLastY     = 0;
+    // Phase 11: 中クリックパン用変数
+    let panDragging  = false;
+    let panLastX     = 0;
+    let panLastY     = 0;
+    const CAM_SENSITIVITY = 0.005; // px → ラジアン変換係数
+    const ZOOM_SENSITIVITY = 0.003; // wheelDeltaY → distance 変換係数
+
     // ── ヒットテスト用ユーティリティ ────────────────────────
     function isOpaqueAt(x, y) {
       const fn = window._getAlphaAtPixel;
@@ -65,6 +76,26 @@
     // ドラッグ中は dragMove() だけ呼ぶ。
     // setIgnoreMouseEvents は触らない（拡大バグを防ぐため）。
     window.addEventListener('mousemove', (e) => {
+      // Phase 11: カメラドラッグ中は orbit を更新して終了
+      if (camDragging) {
+        const dx = e.clientX - camLastX;
+        const dy = e.clientY - camLastY;
+        camLastX = e.clientX;
+        camLastY = e.clientY;
+        const fn = window._updateCameraOrbit;
+        if (typeof fn === 'function') fn(dy * CAM_SENSITIVITY, -dx * CAM_SENSITIVITY);
+        return;
+      }
+      // Phase 11: 中クリックパン中は注視点を上下左右に移動
+      if (panDragging) {
+        const dx = e.clientX - panLastX;
+        const dy = e.clientY - panLastY;
+        panLastX = e.clientX;
+        panLastY = e.clientY;
+        const fn = window._updateCameraTarget;
+        if (typeof fn === 'function') fn(dx, dy);
+        return;
+      }
       if (dragging) {
         api.dragMove();
         return;
@@ -74,6 +105,24 @@
 
     // ── mousedown: モデルを掴む ──────────────────────────────
     document.addEventListener('mousedown', (e) => {
+      if (e.button === 2) {
+        // Phase 11: 右クリック → カメラドラッグ開始
+        camDragging = true;
+        camLastX    = e.clientX;
+        camLastY    = e.clientY;
+        setIgnore(false);
+        e.preventDefault();
+        return;
+      }
+      if (e.button === 1) {
+        // Phase 11: 中クリック → 注視点パン開始
+        panDragging = true;
+        panLastX    = e.clientX;
+        panLastY    = e.clientY;
+        setIgnore(false);
+        e.preventDefault();
+        return;
+      }
       if (e.button !== 0) return;
       dragging = true;
       canvas.classList.add('dragging');
@@ -91,6 +140,20 @@
     // 後ろのウィンドウを操作できなくなる。
     // 次の mousemove でヒットテストが走り、モデルの上なら false に戻る。
     window.addEventListener('mouseup', (e) => {
+      if (e.button === 2 && camDragging) {
+        // Phase 11: 右クリックドラッグ終了
+        camDragging = false;
+        currentIgnore = null;
+        api.setIgnoreMouseEvents(true);
+        return;
+      }
+      if (e.button === 1 && panDragging) {
+        // Phase 11: 中クリックパン終了
+        panDragging = false;
+        currentIgnore = null;
+        api.setIgnoreMouseEvents(true);
+        return;
+      }
       if (e.button !== 0 || !dragging) return;
       dragging = false;
       canvas.classList.remove('dragging');
@@ -103,6 +166,14 @@
     canvas.addEventListener('dragstart', (e) => e.preventDefault());
     document.addEventListener('dragover', (e) => e.preventDefault());
     document.addEventListener('drop',     (e) => e.preventDefault());
+
+    // ── Phase 11: Ctrl+ホイール → カメラズーム ───────────────
+    window.addEventListener('wheel', (e) => {
+      if (!e.shiftKey) return;
+      e.preventDefault();
+      const fn = window._updateCameraZoom;
+      if (typeof fn === 'function') fn(e.deltaY * ZOOM_SENSITIVITY);
+    }, { passive: false });
 
     window.addEventListener('contextmenu', (e) => e.preventDefault());
     window.addEventListener('keydown', (e) => {

@@ -54,6 +54,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   entranceC:    (modelPath) => ipcRenderer.send('ctrl-entrance-c', modelPath),
   onEntranceC:  (cb)        => ipcRenderer.on('do-entrance-c', (_, data) => cb(data)),
 
+  // ── Phase 11: カメラ操作 ─────────────────────────────────────
+  toggleCamera:      () => ipcRenderer.invoke('ctrl-toggle-camera'),
+  onCameraToggle:    (cb) => ipcRenderer.on('do-camera-toggle', (_, enabled) => cb(enabled)),
+
   // ── 共通 ────────────────────────────────────────────────────
   getConfig: () => ipcRenderer.invoke('get-config'),
 });

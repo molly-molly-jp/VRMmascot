@@ -460,6 +460,91 @@ function updateGaze(vrm, delta) {
   vrm.lookAt.target = _gazeLookAtTarget;
 }
 
+// ── Phase 11: オービットカメラ ────────────────────────────────
+// カメラはキャラクター中心を注視点に球面上を回るオービット方式で管理する。
+// cameraEnabled フラグはユーザー入力の受け付けのみ制御する。
+// orbit params → camera.position への変換は常に有効。
+
+let cameraEnabled  = false;
+let orbitTargetX   = 0.0;   // 注視点 X 座標（左右パン）
+let orbitTargetY   = 1.3;   // 注視点 Y 座標（上下パン）
+let orbitDistance  = 3.0;   // カメラ距離
+let orbitRotX      = 0.0;   // 垂直回転（rad）上がプラス
+let orbitRotY      = 0.0;   // 水平回転（rad）右がプラス
+
+/** orbit params を camera.position / lookAt に反映する */
+function applyOrbitCamera() {
+  if (!camera) return;
+  const cosX = Math.cos(orbitRotX);
+  const sinX = Math.sin(orbitRotX);
+  const sinY = Math.sin(orbitRotY);
+  const cosY = Math.cos(orbitRotY);
+  camera.position.set(
+    orbitTargetX + orbitDistance * sinY * cosX,
+    orbitTargetY + orbitDistance * sinX,
+    orbitDistance * cosY * cosX,
+  );
+  camera.lookAt(orbitTargetX, orbitTargetY, 0);
+}
+
+/** カメラ操作の有効/無効を切り替える */
+export function setCameraEnabled(v) {
+  cameraEnabled = !!v;
+  console.log('[VRM] カメラ操作:', cameraEnabled ? 'ON' : 'OFF');
+}
+
+/** 現在の orbit 状態を返す（プリセット保存用） */
+export function getCameraOrbit() {
+  return { targetX: orbitTargetX, targetY: orbitTargetY, distance: orbitDistance, rotX: orbitRotX, rotY: orbitRotY };
+}
+
+/**
+ * orbit params をまとめてセットする（プリセット呼び出し用）。
+ * @param {{ targetX?, targetY?, distance?, rotX?, rotY? }} params
+ */
+export function setCameraOrbit(params) {
+  if (params.targetX  != null) orbitTargetX  = params.targetX;
+  if (params.targetY  != null) orbitTargetY  = params.targetY;
+  if (params.distance != null) orbitDistance = params.distance;
+  if (params.rotX     != null) orbitRotX     = params.rotX;
+  if (params.rotY     != null) orbitRotY     = params.rotY;
+  applyOrbitCamera();
+}
+
+/**
+ * マウスドラッグ量（ラジアン）からカメラ回転を更新する。
+ * cameraEnabled が false のとき何もしない。
+ */
+export function updateCameraOrbit(dRotX, dRotY) {
+  if (!cameraEnabled) return;
+  const HALF_PI = Math.PI / 2;
+  orbitRotX = Math.max(-HALF_PI + 0.01, Math.min(HALF_PI - 0.01, orbitRotX + dRotX));
+  orbitRotY += dRotY;
+  applyOrbitCamera();
+}
+
+/**
+ * Shift+ホイール量からカメラズームを更新する。
+ * delta > 0 で引く（遠ざかる）、delta < 0 で寄る。
+ */
+export function updateCameraZoom(delta) {
+  if (!cameraEnabled) return;
+  orbitDistance = Math.max(0.3, Math.min(20, orbitDistance + delta));
+  applyOrbitCamera();
+}
+
+/**
+ * 中クリックドラッグ量（px）から注視点を上下左右にパンする。
+ * dy > 0（下ドラッグ）→ targetY を下げる / dx > 0（右ドラッグ）→ targetX を右に移動
+ */
+export function updateCameraTarget(dx, dy) {
+  if (!cameraEnabled) return;
+  const PAN_SENSITIVITY = 0.004;
+  orbitTargetX = Math.max(-3, Math.min(3, orbitTargetX - dx * PAN_SENSITIVITY));
+  orbitTargetY = Math.max(-2, Math.min(5, orbitTargetY + dy * PAN_SENSITIVITY));
+  applyOrbitCamera();
+}
+
 function initScene(canvas) {
   const W = window.innerWidth  || 400;
   const H = window.innerHeight || 600;
@@ -514,13 +599,15 @@ function adjustCamera(vrm) {
   const box    = new THREE.Box3().setFromObject(vrm.scene);
   const size   = box.getSize(new THREE.Vector3());
   const center = box.getCenter(new THREE.Vector3());
-  const torsoY = center.y + size.y * 0.1;
-  const W = window.innerWidth;
-  const H = window.innerHeight;
-  camera.position.set(center.x, torsoY, size.y * 1.8);
-  camera.lookAt(center.x, torsoY, 0);
-  camera.aspect = W / H;
+  // orbit 初期値をモデルのバウンディングボックスから計算して設定
+  orbitTargetX  = center.x;
+  orbitTargetY  = center.y + size.y * 0.1;
+  orbitDistance = size.y * 1.8;
+  orbitRotX     = 0.0;
+  orbitRotY     = 0.0;
+  camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
+  applyOrbitCamera();
 }
 
 let animLoopStarted = false;

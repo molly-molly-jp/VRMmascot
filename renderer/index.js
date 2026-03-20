@@ -1,5 +1,7 @@
 // renderer/index.js — VRMウィンドウ専用エントリーポイント
-import { initSceneOnly, initVRM, switchVRM, playMotion, getAlphaAtPixel } from './vrm.js';
+import { initSceneOnly, initVRM, switchVRM, playMotion, getAlphaAtPixel,
+         setCameraEnabled, getCameraOrbit, setCameraOrbit,
+         updateCameraOrbit, updateCameraZoom, updateCameraTarget } from './vrm.js';
 import { speak, stopCurrentSpeech, setSpeakerId } from './voicevox.js';
 import { askAI } from './ai.js';
 import { setupVBCableAnalyser, teardownVBCable } from './lipsync.js';
@@ -7,7 +9,12 @@ import { setupVBCableAnalyser, teardownVBCable } from './lipsync.js';
 const api = window.electronAPI;
 
 // ヒットテスト関数をグローバルに公開（index.htmlのinlineスクリプトから使う）
-window._getAlphaAtPixel = getAlphaAtPixel;
+window._getAlphaAtPixel   = getAlphaAtPixel;
+
+// Phase 11: カメラ操作関数をグローバルに公開（index.htmlのinlineスクリプトから使う）
+window._updateCameraOrbit  = updateCameraOrbit;
+window._updateCameraZoom   = updateCameraZoom;
+window._updateCameraTarget = updateCameraTarget;
 
 window.addEventListener('unhandledrejection', (e) => {
   console.error('[vrm-win] unhandledrejection:', e.reason);
@@ -268,6 +275,12 @@ api.onEntranceC(({ path: modelPath, modelConf, randomMotion, randomSound }) => {
 
     setStatus('');
   })();
+});
+
+// ── Phase 11: カメラON/OFF ────────────────────────────────────
+api.onCameraToggle((enabled) => {
+  setCameraEnabled(enabled);
+  console.log('[vrm-win] カメラ操作:', enabled ? 'ON' : 'OFF');
 });
 
 // ─── 起動 ─────────────────────────────────────────────────────
