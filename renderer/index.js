@@ -300,7 +300,7 @@ async function main() {
 
   // シーンのみ初期化。モデルはロードしない（起動時は空の透過背景）
   try {
-    initSceneOnly('vrm-canvas');
+    initSceneOnly('vrm-canvas', configCache.lighting ?? {});
   } catch (err) {
     console.error('[vrm-win] シーン初期化失敗:', err);
     setStatus(`エラー: ${err.message}`);

@@ -13,6 +13,13 @@ let lipSyncSensitivity  = 1.0;
 let lipSyncMaxMouthOpen = 1.0;
 
 let renderer, scene, camera;
+let ambientLight, dirLight;  // Phase 12-1: ライティング参照
+let currentLightingCfg = {}; // Phase 12-1: MToon調整で参照するために保持
+
+// Phase 12-1: MToon毎フレーム上書き用（vrm.update()による巻き戻しを防ぐ）
+let mtoonOverrideMaterials = []; // 対象マテリアルのキャッシュ
+let mtoonShadingShiftOverride = null; // null = 上書きしない
+let mtoonShadeDarken = null; // シェード色の暗さ係数（0.0〜1.0、小さいほど暗い）
 
 // VRMローダー（VRMモデル用）
 const loader = new GLTFLoader();
@@ -111,6 +118,48 @@ export async function playMotion(vrmaPath) {
 
 function getBaseUrl() {
   return window.location.href.replace(/\/renderer\/[^/]+$/, '');
+}
+
+// ── Phase 12-1: MToonマテリアル調整 ──────────────────────────
+/**
+ * VRMのMToonマテリアルパラメータを config.json の lighting.mtoon 設定で上書きする。
+ * shadeShift (VRM0) / shadingShiftFactor (VRM1) を下げると影エリアが広くなる。
+ * 範囲: -1.0（影が多い）〜 1.0（影なし）。デフォルト値はモデル依存で通常 0〜1 付近。
+ */
+function applyMtoonSettings(vrm, mtoonCfg) {
+  if (!mtoonCfg || Object.keys(mtoonCfg).length === 0) return;
+
+  const shadeShift         = mtoonCfg.shadeShift;
+  const shadingShiftFactor = mtoonCfg.shadingShiftFactor;
+
+  // 毎フレーム上書き用にマテリアルをキャッシュ
+  mtoonOverrideMaterials = [];
+  mtoonShadingShiftOverride = shadingShiftFactor ?? null;
+  mtoonShadeDarken = mtoonCfg.shadeDarken ?? null;
+
+  let count = 0;
+  vrm.scene.traverse((obj) => {
+    if (!obj.isMesh) return;
+    const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+    for (const mat of mats) {
+      if (!mat) continue;
+      const type = mat.type || '';
+      // VRM0
+      if (type.includes('MToon') && shadeShift !== undefined && mat.shadeShift !== undefined) {
+        mat.shadeShift = shadeShift;
+        mat.needsUpdate = true;
+        count++;
+      }
+      // VRM1: uniforms.shadingShiftFactor があればキャッシュに追加
+      if (shadingShiftFactor !== undefined && mat.uniforms?.shadingShiftFactor !== undefined) {
+        // 元のシェード色を保存しておく
+        const origShade = mat.uniforms.shadeColorFactor?.value;
+        mtoonOverrideMaterials.push({ mat, origShade });
+        count++;
+      }
+    }
+  });
+  console.log(`[VRM] MToon設定: ${count}マテリアルをキャッシュ (毎フレーム上書きON)`, mtoonCfg);
 }
 
 function resolveLipSyncExpression(vrm) {
@@ -545,7 +594,8 @@ export function updateCameraTarget(dx, dy) {
   applyOrbitCamera();
 }
 
-function initScene(canvas) {
+function initScene(canvas, lightingCfg = {}) {
+  currentLightingCfg = lightingCfg; // モデルロード時にMToon調整で参照する
   const W = window.innerWidth  || 400;
   const H = window.innerHeight || 600;
   const dpr = window.devicePixelRatio || 1;
@@ -573,10 +623,34 @@ function initScene(canvas) {
   renderer.outputColorSpace = THREE.SRGBColorSpace;
 
   scene = new THREE.Scene();
-  scene.add(new THREE.AmbientLight(0xffffff, 1.0));
-  const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
-  dirLight.position.set(1, 2, 2);
+
+  // Phase 12-1: ライティング設定（config.json の lighting セクション）
+  // lightingCfg が未指定の場合はデフォルト値にフォールバック
+  const ambientIntensity = lightingCfg?.ambient?.intensity  ?? 0.6;
+  const mainIntensity    = lightingCfg?.main?.intensity     ?? 1.2;
+  const mainX            = lightingCfg?.main?.x             ?? 1.0;
+  const mainY            = lightingCfg?.main?.y             ?? 2.0;
+  const mainZ            = lightingCfg?.main?.z             ?? 1.0;
+  const shadowEnabled    = lightingCfg?.shadow?.enabled     ?? false;
+  const shadowBias       = lightingCfg?.shadow?.bias        ?? -0.001;
+
+  ambientLight = new THREE.AmbientLight(0xffffff, ambientIntensity);
+  scene.add(ambientLight);
+
+  dirLight = new THREE.DirectionalLight(0xffffff, mainIntensity);
+  dirLight.position.set(mainX, mainY, mainZ);
+  if (shadowEnabled) {
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
+    dirLight.castShadow        = true;
+    dirLight.shadow.bias       = shadowBias;
+    dirLight.shadow.mapSize.set(1024, 1024);
+  } else {
+    renderer.shadowMap.enabled = false;
+    dirLight.castShadow        = false;
+  }
   scene.add(dirLight);
+  console.log('[VRM] ライティング設定:', { ambientIntensity, mainIntensity, mainX, mainY, mainZ, shadowEnabled });
 
   camera = new THREE.PerspectiveCamera(30, W / H, 0.1, 20);
   camera.position.set(0, 1.3, 3.0);
@@ -631,6 +705,19 @@ function startAnimLoop() {
       updateIdleMotion(delta);
       if (currentMixer) currentMixer.update(delta);  // VRMA進行
       currentVRM.update(delta);
+      // Phase 12-1: vrm.update()がuniformを巻き戻すので直後に強制上書き
+      if (mtoonShadingShiftOverride !== null && mtoonOverrideMaterials.length > 0) {
+        for (const { mat, origShade } of mtoonOverrideMaterials) {
+          mat.uniforms.shadingShiftFactor.value = mtoonShadingShiftOverride;
+          // シェード色を暗くする（shadeDarken: 0.3 なら元の色を30%に）
+          if (mtoonShadeDarken !== null && origShade && mat.uniforms.shadeColorFactor) {
+            const c = mat.uniforms.shadeColorFactor.value;
+            c.r = origShade.r * mtoonShadeDarken;
+            c.g = origShade.g * mtoonShadeDarken;
+            c.b = origShade.b * mtoonShadeDarken;
+          }
+        }
+      }
     }
     renderer.render(scene, camera);
   }
@@ -660,10 +747,10 @@ export function getAlphaAtPixel(clientX, clientY) {
  * シーン・レンダラー・カメラの初期化のみ行う。VRMモデルはロードしない。
  * 起動時の「空の画面」状態を作るために使う。
  */
-export function initSceneOnly(canvasId) {
+export function initSceneOnly(canvasId, lightingCfg = {}) {
   const canvas = document.getElementById(canvasId);
   if (!canvas) throw new Error(`canvas#${canvasId} が見つかりません`);
-  initScene(canvas);
+  initScene(canvas, lightingCfg);
   startAnimLoop();   // currentVRM が null のまま空の透過背景をレンダリング開始
   console.log('[VRM] シーン初期化完了（モデルなし）');
 }
@@ -675,6 +762,7 @@ export async function initVRM(canvasId, vrmPath, lipsyncConfig = {}, blinkConfig
   const vrm = await loadVRM(vrmPath || 'assets/model.vrm');
   scene.add(vrm.scene);
   currentVRM = vrm;
+  applyMtoonSettings(vrm, currentLightingCfg?.mtoon ?? {});
   lipSyncExpressionName = resolveLipSyncExpression(vrm);
   lipSyncSensitivity    = lipsyncConfig.sensitivity  ?? 1.0;
   lipSyncMaxMouthOpen   = lipsyncConfig.maxMouthOpen ?? 1.0;
@@ -704,10 +792,14 @@ export async function switchVRM(vrmPath, lipsyncConfig = {}, blinkConfig = {}, g
     currentVRM = null;
     lipSyncExpressionName = null;
     blinkExpr = null;
+    // Phase 12-1: マテリアルキャッシュをクリア
+    mtoonOverrideMaterials = [];
+    mtoonShadingShiftOverride = null;
   }
   const vrm = await loadVRM(vrmPath);
   scene.add(vrm.scene);
   currentVRM = vrm;
+  applyMtoonSettings(vrm, currentLightingCfg?.mtoon ?? {});
   lipSyncExpressionName = resolveLipSyncExpression(vrm);
   lipSyncSensitivity    = lipsyncConfig.sensitivity  ?? 1.0;
   lipSyncMaxMouthOpen   = lipsyncConfig.maxMouthOpen ?? 1.0;

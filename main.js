@@ -110,6 +110,10 @@ function createVRMWindow() {
     },
   });
   vrmWin.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+  // Phase 12-1 デバッグ用: 起動時にDevToolsを自動で開く（確認後は削除してOK）
+  vrmWin.webContents.once('did-finish-load', () => {
+    vrmWin.webContents.openDevTools({ mode: 'detach' });
+  });
   vrmWin.webContents.on('will-navigate', (e) => e.preventDefault());
   vrmWin.webContents.on('will-redirect',  (e) => e.preventDefault());
 

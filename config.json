@@ -1,5 +1,15 @@
 {
   "shortcutKey": "Ctrl+Q",
+  "lighting": {
+    "ambient": { "intensity": 0.5 },
+    "main": { "intensity": 0.4, "x": 4.0, "y": 2.0, "z": 1.0 },
+    "shadow": { "enabled": false, "bias": -0.001 },
+    "mtoon": {
+      "shadeShift": -0.3,
+      "shadingShiftFactor": -0.2,
+      "shadeDarken": 0.5
+    }
+  },
   "camera": {
     "default": {
       "targetX": 0,
