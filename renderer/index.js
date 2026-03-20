@@ -15,6 +15,8 @@ window._getAlphaAtPixel   = getAlphaAtPixel;
 window._updateCameraOrbit  = updateCameraOrbit;
 window._updateCameraZoom   = updateCameraZoom;
 window._updateCameraTarget = updateCameraTarget;
+// Phase 11-2: プリセット保存用にmain.jsからexecuteJavaScriptで呼べるよう公開
+window._getCameraOrbit     = getCameraOrbit;
 
 window.addEventListener('unhandledrejection', (e) => {
   console.error('[vrm-win] unhandledrejection:', e.reason);
@@ -281,6 +283,12 @@ api.onEntranceC(({ path: modelPath, modelConf, randomMotion, randomSound }) => {
 api.onCameraToggle((enabled) => {
   setCameraEnabled(enabled);
   console.log('[vrm-win] カメラ操作:', enabled ? 'ON' : 'OFF');
+});
+
+// ── Phase 11-2: プリセット呼び出し・リセット ─────────────────
+api.onSetCameraOrbit((data) => {
+  setCameraOrbit(data);
+  console.log('[vrm-win] カメラ位置セット:', data);
 });
 
 // ─── 起動 ─────────────────────────────────────────────────────

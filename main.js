@@ -248,6 +248,47 @@ function setupIPC(config) {
     return cameraOn;
   });
 
+  // ── Phase 11-2: プリセット保存 ───────────────────────────────
+  // VRMウィンドウの window._getCameraOrbit() を executeJavaScript で取得して保存
+  ipcMain.handle('ctrl-save-preset', async (_, index) => {
+    if (!vrmWin || vrmWin.isDestroyed()) return { ok: false };
+    let orbit;
+    try {
+      orbit = await vrmWin.webContents.executeJavaScript('window._getCameraOrbit()');
+    } catch (e) {
+      console.error('[main] getCameraOrbit失敗:', e.message);
+      return { ok: false };
+    }
+    const preset = config.camera.presets[index];
+    if (!preset) return { ok: false };
+    preset.targetX  = orbit.targetX;
+    preset.targetY  = orbit.targetY;
+    preset.distance = orbit.distance;
+    preset.rotX     = orbit.rotX;
+    preset.rotY     = orbit.rotY;
+    saveConfig(config);
+    console.log(`[main] プリセット${index + 1} 保存:`, orbit);
+    return { ok: true, orbit };
+  });
+
+  // ── Phase 11-2: プリセット呼び出し ──────────────────────────
+  ipcMain.on('ctrl-load-preset', (_, index) => {
+    const preset = config.camera?.presets?.[index];
+    if (!preset) return console.warn('[main] プリセット未設定:', index);
+    console.log(`[main] プリセット${index + 1} 呼び出し:`, preset);
+    if (vrmWin && !vrmWin.isDestroyed())
+      vrmWin.webContents.send('do-set-camera-orbit', preset);
+  });
+
+  // ── Phase 11-2: カメラリセット ──────────────────────────────
+  ipcMain.on('ctrl-reset-camera', () => {
+    const def = config.camera?.default;
+    if (!def) return console.warn('[main] camera.defaultが未設定');
+    console.log('[main] カメラリセット:', def);
+    if (vrmWin && !vrmWin.isDestroyed())
+      vrmWin.webContents.send('do-set-camera-orbit', def);
+  });
+
   // ── Phase 10-3: 登場演出A ────────────────────────────────────
   // modelPath を受け取り、modelConf（entrance.patternA含む）を付けてVRMウィンドウへ転送
   ipcMain.on('ctrl-entrance-a', (_, modelPath) => {

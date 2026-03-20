@@ -70,6 +70,14 @@
     #camera-toggle-btn { min-width: 130px; }
     #camera-toggle-btn.cam-on  { background: rgba(80,160,255,0.25); border-color: rgba(80,160,255,0.6); color: #89b4fa; font-weight: 600; }
     #camera-toggle-btn.cam-off { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.2); color: #cdd6f4; }
+    /* Phase 11-2: プリセット */
+    .preset-row { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+    .preset-group { display: flex; gap: 3px; align-items: center; }
+    .preset-label { font-size: 11px; color: #888; min-width: 52px; text-align: right; padding-right: 2px; }
+    .btn.preset-save { padding: 4px 8px; font-size: 11px; background: rgba(245,166,35,0.15); border-color: rgba(245,166,35,0.4); color: #f5a623; }
+    .btn.preset-save:hover { background: rgba(245,166,35,0.3); }
+    .btn.preset-load { padding: 4px 8px; font-size: 11px; }
+    .btn.reset-cam  { padding: 4px 10px; font-size: 11px; background: rgba(255,255,255,0.05); }
     /* Phase 10: ドロップダウン＋モーション */
     .select-row { display: flex; gap: 6px; align-items: center; }
     select.ctrl-select {
@@ -152,6 +160,28 @@
       <button id="clear-btn" class="btn danger">⏹ 読み上げ停止</button>
       <button id="dom-toggle-btn" class="btn dom-on">🔴 DOM取得 停止</button>
       <button id="camera-toggle-btn" class="btn cam-off">🎥 カメラ操作 OFF</button>
+    </div>
+  </div>
+
+  <div class="section" style="padding-top:7px;">
+    <div class="section-label">カメラプリセット</div>
+    <div class="preset-row">
+      <div class="preset-group">
+        <span class="preset-label">プリセット1</span>
+        <button class="btn preset-save" data-preset="0">💾 保存</button>
+        <button class="btn preset-load" data-preset="0">📷 呼び出し</button>
+      </div>
+      <div class="preset-group">
+        <span class="preset-label">プリセット2</span>
+        <button class="btn preset-save" data-preset="1">💾 保存</button>
+        <button class="btn preset-load" data-preset="1">📷 呼び出し</button>
+      </div>
+      <div class="preset-group">
+        <span class="preset-label">プリセット3</span>
+        <button class="btn preset-save" data-preset="2">💾 保存</button>
+        <button class="btn preset-load" data-preset="2">📷 呼び出し</button>
+      </div>
+      <button id="camera-reset-btn" class="btn reset-cam">↩ リセット</button>
     </div>
   </div>
 
@@ -411,6 +441,36 @@
         });
       });
       updateCameraBtn();
+
+      // ─── Phase 11-2: カメラプリセット ────────────────────────
+      document.querySelectorAll('.preset-save').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var index = parseInt(btn.dataset.preset);
+          api.savePreset(index).then(function(result) {
+            if (result && result.ok) {
+              setStatus('プリセット' + (index + 1) + ' を保存しました');
+            } else {
+              setStatus('プリセット保存失敗（モデルを先に読み込んでください）');
+            }
+            setTimeout(function() { setStatus(''); }, 2000);
+          });
+        });
+      });
+
+      document.querySelectorAll('.preset-load').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var index = parseInt(btn.dataset.preset);
+          api.loadPreset(index);
+          setStatus('プリセット' + (index + 1) + ' を呼び出しました');
+          setTimeout(function() { setStatus(''); }, 1500);
+        });
+      });
+
+      document.getElementById('camera-reset-btn').addEventListener('click', function() {
+        api.resetCamera();
+        setStatus('カメラをリセットしました');
+        setTimeout(function() { setStatus(''); }, 1500);
+      });
 
       // ─── 起動 ────────────────────────────────────────────────
       api.getConfig().then(function(config) {

@@ -58,6 +58,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   toggleCamera:      () => ipcRenderer.invoke('ctrl-toggle-camera'),
   onCameraToggle:    (cb) => ipcRenderer.on('do-camera-toggle', (_, enabled) => cb(enabled)),
 
+  // ── Phase 11-2: カメラプリセット ─────────────────────────────
+  savePreset:        (index) => ipcRenderer.invoke('ctrl-save-preset', index),
+  loadPreset:        (index) => ipcRenderer.send('ctrl-load-preset', index),
+  resetCamera:       ()      => ipcRenderer.send('ctrl-reset-camera'),
+  onSetCameraOrbit:  (cb)    => ipcRenderer.on('do-set-camera-orbit', (_, data) => cb(data)),
+
   // ── 共通 ────────────────────────────────────────────────────
   getConfig: () => ipcRenderer.invoke('get-config'),
 });

@@ -1,5 +1,40 @@
 {
   "shortcutKey": "Ctrl+Q",
+  "camera": {
+    "default": {
+      "targetX": 0,
+      "targetY": 1.4,
+      "distance": 3,
+      "rotX": 0,
+      "rotY": 0
+    },
+    "presets": [
+      {
+        "label": "プリセット1",
+        "targetX": 0.032000568148770836,
+        "targetY": 1.2933532674627848,
+        "distance": 1.4956783999064376,
+        "rotX": 0.095,
+        "rotY": -0.1349999999999999
+      },
+      {
+        "label": "プリセット2",
+        "targetX": 0,
+        "targetY": 1.4,
+        "distance": 3,
+        "rotX": 0,
+        "rotY": 0
+      },
+      {
+        "label": "プリセット3",
+        "targetX": 0,
+        "targetY": 1.4,
+        "distance": 3,
+        "rotX": 0,
+        "rotY": 0
+      }
+    ]
+  },
   "lipSyncDevice": "ステレオ ミキサー (Realtek(R) Audio)",
   "blink": {
     "enabled": true,
