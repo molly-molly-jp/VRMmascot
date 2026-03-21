@@ -8,6 +8,58 @@ import { getLipSyncValue } from './lipsync.js';
 export let currentVRM = null;
 let lipSyncExpressionName = null;
 
+// Phase 12-2: 表情レイヤー
+// VRM0 と VRM1 で表情名が異なるため、両方の候補名を持つ。
+// 例: joy(VRM0) → happy(VRM1)、sorrow(VRM0) → sad(VRM1)、fun(VRM0) → relaxed(VRM1)
+// 各エントリーは [ 論理名, ...候補名の優先順 ] の形式。
+// setValue は候補名を順に試し、最初に存在するものを使う。
+const EXPRESSION_ALIAS_MAP = [
+  { key: 'neutral',   aliases: ['neutral'] },
+  { key: 'fun',       aliases: ['fun', 'relaxed'] },
+  { key: 'joy',       aliases: ['joy', 'happy'] },
+  { key: 'sorrow',    aliases: ['sorrow', 'sad'] },
+  { key: 'surprised', aliases: ['surprised'] },
+  { key: 'angry',     aliases: ['angry'] },
+];
+
+let currentExpressionKey = null; // 論理名 ('fun' / 'joy' / ... / null)
+
+/**
+ * 表情を切り替える。IPC経由で index.js から呼ばれる。
+ * 'neutral' または null を渡すと全表情オフ（リセット）。
+ */
+export function setExpression(name) {
+  currentExpressionKey = (name === 'neutral' || name == null) ? null : name;
+  console.log('[VRM] 表情切り替え:', name ?? 'null', '→ currentExpressionKey:', currentExpressionKey);
+}
+
+/**
+ * expressionManager に指定した値をセットする。
+ * aliases を順に試し、存在する名前だけに適用する。
+ */
+function _setExpressionValue(em, aliases, value) {
+  for (const alias of aliases) {
+    try {
+      em.setValue(alias, value);
+    } catch (_) {
+      // 存在しない表情名は無視
+    }
+  }
+}
+
+/**
+ * アニメループ内で毎フレーム呼ぶ。
+ * 表情プリセットの値を確定させる（瞬き・口パク・視線とは独立したレイヤー）。
+ */
+function applyExpressionLayer(vrm) {
+  if (!vrm?.expressionManager) return;
+  const em = vrm.expressionManager;
+  for (const { key, aliases } of EXPRESSION_ALIAS_MAP) {
+    const val = key === currentExpressionKey ? 1.0 : 0.0;
+    _setExpressionValue(em, aliases, val);
+  }
+}
+
 // タスク9-1: モデル個別の口パク設定（config.json の lipsync オブジェクト）
 let lipSyncSensitivity  = 1.0;
 let lipSyncMaxMouthOpen = 1.0;
@@ -700,6 +752,7 @@ function startAnimLoop() {
           getLipSyncValue(lipSyncSensitivity, lipSyncMaxMouthOpen)
         );
       }
+      applyExpressionLayer(currentVRM); // Phase 12-2: 表情レイヤー（vrm.update前に確定）
       updateBlink(currentVRM, delta);
       updateGaze(currentVRM, delta);
       updateIdleMotion(delta);
@@ -795,6 +848,8 @@ export async function switchVRM(vrmPath, lipsyncConfig = {}, blinkConfig = {}, g
     // Phase 12-1: マテリアルキャッシュをクリア
     mtoonOverrideMaterials = [];
     mtoonShadingShiftOverride = null;
+    // Phase 12-2: 表情レイヤーをリセット
+    currentExpressionKey = null;
   }
   const vrm = await loadVRM(vrmPath);
   scene.add(vrm.scene);

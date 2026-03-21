@@ -1,7 +1,8 @@
 // renderer/index.js — VRMウィンドウ専用エントリーポイント
 import { initSceneOnly, initVRM, switchVRM, playMotion, getAlphaAtPixel,
          setCameraEnabled, getCameraOrbit, setCameraOrbit,
-         updateCameraOrbit, updateCameraZoom, updateCameraTarget } from './vrm.js';
+         updateCameraOrbit, updateCameraZoom, updateCameraTarget,
+         setExpression } from './vrm.js';
 import { speak, stopCurrentSpeech, setSpeakerId } from './voicevox.js';
 import { askAI } from './ai.js';
 import { setupVBCableAnalyser, teardownVBCable } from './lipsync.js';
@@ -142,6 +143,12 @@ api.onSendText(async (userText) => {
 
 api.onClearQueue(() => clearQueueAndStop());
 api.onSpeakQueue((text) => enqueue(text));
+
+// ── Phase 12-2: 表情切り替え ──────────────────────────────────
+api.onSetExpression((expressionName) => {
+  console.log('[vrm-win] 表情切り替え要求:', expressionName);
+  setExpression(expressionName);
+});
 
 // ── Phase 10: VRMAモーション再生 ─────────────────────────────
 api.onPlayMotion(async (motionPath) => {

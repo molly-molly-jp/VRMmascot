@@ -64,6 +64,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   resetCamera:       ()      => ipcRenderer.send('ctrl-reset-camera'),
   onSetCameraOrbit:  (cb)    => ipcRenderer.on('do-set-camera-orbit', (_, data) => cb(data)),
 
+  // ── Phase 12-2: 表情切り替え ──────────────────────────────────
+  onSetExpression:   (cb)    => ipcRenderer.on('do-set-expression', (_, name) => cb(name)),
+
   // ── 共通 ────────────────────────────────────────────────────
   getConfig: () => ipcRenderer.invoke('get-config'),
 });

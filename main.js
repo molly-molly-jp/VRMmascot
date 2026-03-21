@@ -364,6 +364,25 @@ function setupShortcut(config) {
     if (vrmWin && !vrmWin.isDestroyed()) vrmWin.webContents.send('speak-queue', text);
   });
   console.log(ok ? `[main] ショートカット登録: ${key}` : `[main] ショートカット登録失敗: ${key}`);
+
+  // Phase 12-2: 表情切り替えグローバルショートカット
+  const exprKeys = config.expressionKeys ?? {
+    'num0': 'neutral',
+    'num1': 'fun',
+    'num2': 'sorrow',
+    'num3': 'surprised',
+    'num4': 'angry',
+    'num5': 'joy',
+  };
+  for (const [accelerator, expressionName] of Object.entries(exprKeys)) {
+    const registered = globalShortcut.register(accelerator, () => {
+      console.log(`[main] 表情キー: ${accelerator} → ${expressionName}`);
+      if (vrmWin && !vrmWin.isDestroyed())
+        vrmWin.webContents.send('do-set-expression', expressionName);
+    });
+    if (!registered) console.warn(`[main] 表情ショートカット登録失敗: ${accelerator}`);
+  }
+  console.log('[main] 表情ショートカット登録完了:', Object.keys(exprKeys).join(', '));
 }
 
 // ── Phase 8: ローカルHTTPサーバー (port:3000) ─────────────────

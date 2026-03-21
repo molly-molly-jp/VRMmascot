@@ -421,5 +421,13 @@
         }
       ]
     }
-  ]
+  ],
+  "expressionKeys": {
+    "num0": "neutral",
+    "num1": "fun",
+    "num2": "sorrow",
+    "num3": "surprised",
+    "num4": "angry",
+    "num5": "joy"
+  }
 }
