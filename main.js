@@ -366,6 +366,35 @@ function setupIPC(config) {
       });
   });
 
+  // ── Phase 13-6: 未使用モデル設定クリーンアップ ──────────────
+  // ファイルが存在しないモデルの一覧を返す
+  ipcMain.handle('ctrl-check-unused-models', () => {
+    const unused = [];
+    for (const group of config.groups ?? []) {
+      for (const model of group.models ?? []) {
+        const absPath = path.join(__dirname, model.path);
+        if (!fs.existsSync(absPath)) {
+          unused.push({ groupId: group.id, label: model.label, path: model.path });
+        }
+      }
+    }
+    console.log('[main] 未使用モデル検出:', unused.length, '件');
+    return unused;
+  });
+
+  // 指定パスのモデル設定を config.json から削除する
+  ipcMain.handle('ctrl-delete-unused-models', (_, paths) => {
+    let deleted = 0;
+    for (const group of config.groups ?? []) {
+      const before = (group.models ?? []).length;
+      group.models  = (group.models ?? []).filter(m => !paths.includes(m.path));
+      deleted      += before - group.models.length;
+    }
+    saveConfig(config);
+    console.log('[main] 未使用モデル削除完了:', deleted, '件');
+    return { ok: true, deleted };
+  });
+
   // ── Phase 13-5: ライティング 即時更新（VRMウィンドウへ転送）─
   ipcMain.handle('ctrl-update-lighting', (_, modelPath, params) => {
     if (vrmWin && !vrmWin.isDestroyed())

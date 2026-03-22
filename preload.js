@@ -67,6 +67,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // ── Phase 12-2: 表情切り替え ──────────────────────────────────
   onSetExpression:   (cb)    => ipcRenderer.on('do-set-expression', (_, name) => cb(name)),
 
+  // ── Phase 13-6: 未使用モデル設定クリーンアップ ──────────────
+  checkUnusedModels: () =>
+    ipcRenderer.invoke('ctrl-check-unused-models'),
+  deleteUnusedModels: (paths) =>
+    ipcRenderer.invoke('ctrl-delete-unused-models', paths),
+
   // ── Phase 13-5: ライティング調整 ─────────────────────────────
   getLighting: (modelPath) =>
     ipcRenderer.invoke('ctrl-get-lighting', modelPath),

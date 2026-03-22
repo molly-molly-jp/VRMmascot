@@ -281,7 +281,7 @@
     </div>
 
     <!-- タスク5: ライティング調整UI -->
-    <div class="section" style="border-bottom:none;">
+    <div class="section">
       <div class="section-label">ライティング調整（現在のモデル）</div>
       <div style="display:flex; flex-direction:column; gap:5px;">
         <div class="lighting-row">
@@ -310,7 +310,21 @@
       </div>
     </div>
 
-    <!-- タスク6以降の設定項目はここに追加 -->
+    <!-- タスク6: 未使用モデル設定クリーンアップ -->
+    <div class="section" style="border-bottom:none;">
+      <div class="section-label">未使用モデル設定クリーンアップ</div>
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <button class="btn" id="check-unused-btn" style="align-self:flex-start;">🔍 未使用モデルを検出</button>
+        <div id="unused-result" style="font-size:12px; color:#a6adc8; display:none;">
+          <div id="unused-list" style="margin-bottom:6px;"></div>
+          <div id="unused-actions" style="display:none;">
+            <button class="btn danger" id="delete-unused-btn">🗑 選択したモデルの設定を削除</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 設定タブの末尾 -->
 
   </div><!-- /tab-settings -->
 
@@ -716,6 +730,57 @@
         api.saveLighting(p, getLightingParams()).then(function(r) {
           setStatus(r.ok ? 'ライティング設定を保存しました' : '保存失敗');
           setTimeout(function() { setStatus(''); }, 1800);
+        });
+      });
+
+      // ─── 13-6: 未使用モデルクリーンアップ ────────────────────
+      var unusedResult  = document.getElementById('unused-result');
+      var unusedList    = document.getElementById('unused-list');
+      var unusedActions = document.getElementById('unused-actions');
+      var pendingPaths  = []; // 削除候補パスの一覧
+
+      document.getElementById('check-unused-btn').addEventListener('click', function() {
+        setStatus('ファイルを確認中...');
+        api.checkUnusedModels().then(function(unused) {
+          setStatus('');
+          unusedResult.style.display = 'block';
+          if (unused.length === 0) {
+            unusedList.innerHTML =
+              '<span style="color:#3dcc91;">✅ 未使用のモデル設定はありません</span>';
+            unusedActions.style.display = 'none';
+            pendingPaths = [];
+            return;
+          }
+          pendingPaths = unused.map(function(u) { return u.path; });
+          var html = '<div style="color:#f5c842; margin-bottom:4px;">以下の設定はファイルが存在しません：</div>';
+          unused.forEach(function(u) {
+            html += '<div style="font-size:11px; color:#f38ba8; padding-left:8px;">['
+              + u.groupId + '] ' + u.label
+              + ' <span style="color:#585b70;">(' + u.path + ')</span></div>';
+          });
+          unusedList.innerHTML = html;
+          unusedActions.style.display = 'block';
+        }).catch(function(err) {
+          setStatus('エラー: ' + err.message);
+        });
+      });
+
+      document.getElementById('delete-unused-btn').addEventListener('click', function() {
+        if (pendingPaths.length === 0) return;
+        if (!confirm(pendingPaths.length + '件のモデル設定をconfig.jsonから削除します。\nよろしいですか？')) return;
+        api.deleteUnusedModels(pendingPaths).then(function(r) {
+          if (r.ok) {
+            setStatus(r.deleted + '件のモデル設定を削除しました');
+            unusedList.innerHTML =
+              '<span style="color:#3dcc91;">✅ ' + r.deleted + '件削除しました</span>';
+            unusedActions.style.display = 'none';
+            pendingPaths = [];
+            // configDataも更新
+            api.getConfig().then(function(cfg) { configData = cfg; });
+          } else {
+            setStatus('削除に失敗しました');
+          }
+          setTimeout(function() { setStatus(''); }, 2500);
         });
       });
 
