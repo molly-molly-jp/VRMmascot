@@ -325,6 +325,18 @@
               "sound": "",
               "soundDelayMs": 0
             }
+          },
+          "lighting": {
+            "ambient": {
+              "intensity": 0.85
+            },
+            "main": {
+              "intensity": 1.05,
+              "x": 2.2
+            },
+            "mtoon": {
+              "shadingShiftFactor": 0.3
+            }
           }
         },
         {
@@ -393,6 +405,18 @@
               "motion": "assets/motions/entrance_default.vrma",
               "sound": "assets/sounds/entrance_default.wav",
               "soundDelayMs": 3000
+            }
+          },
+          "lighting": {
+            "ambient": {
+              "intensity": 0.65
+            },
+            "main": {
+              "intensity": 0.8,
+              "x": 3.7
+            },
+            "mtoon": {
+              "shadingShiftFactor": -0.15
             }
           }
         },

@@ -840,6 +840,24 @@ export function setLipsync(sensitivity, maxMouthOpen) {
   console.log('[VRM] setLipsync → sensitivity:', sensitivity, '| maxMouthOpen:', maxMouthOpen);
 }
 
+/**
+ * Phase 13-5: ライティングをリアルタイムで更新する。
+ * { mainX, mainIntensity, ambientIntensity, shadingShiftFactor } を受け取り即時反映。
+ */
+export function setLighting({ mainX, mainIntensity, ambientIntensity, shadingShiftFactor }) {
+  if (ambientLight && ambientIntensity != null) {
+    ambientLight.intensity = ambientIntensity;
+  }
+  if (dirLight) {
+    if (mainIntensity != null) dirLight.intensity = mainIntensity;
+    if (mainX        != null) dirLight.position.setX(mainX);
+  }
+  if (shadingShiftFactor != null) {
+    mtoonShadingShiftOverride = shadingShiftFactor;
+  }
+  console.log('[VRM] setLighting →', { mainX, mainIntensity, ambientIntensity, shadingShiftFactor });
+}
+
 export async function switchVRM(vrmPath, lipsyncConfig = {}, blinkConfig = {}, gazeConfig = {}, idleMotionConfig = {}, restPoseConfig = {}) {
   console.log('[VRM] モデル切り替え:', vrmPath);
   // VRMA再生中なら停止

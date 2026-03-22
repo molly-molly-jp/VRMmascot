@@ -67,6 +67,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // ── Phase 12-2: 表情切り替え ──────────────────────────────────
   onSetExpression:   (cb)    => ipcRenderer.on('do-set-expression', (_, name) => cb(name)),
 
+  // ── Phase 13-5: ライティング調整 ─────────────────────────────
+  getLighting: (modelPath) =>
+    ipcRenderer.invoke('ctrl-get-lighting', modelPath),
+  updateLighting: (modelPath, params) =>
+    ipcRenderer.invoke('ctrl-update-lighting', modelPath, params),
+  saveLighting: (modelPath, params) =>
+    ipcRenderer.invoke('ctrl-save-lighting', modelPath, params),
+  onSetLighting: (cb) =>
+    ipcRenderer.on('do-set-lighting', (_, params) => cb(params)),
+
   // ── Phase 13-4: 口パク調整 ───────────────────────────────────
   updateLipsync: (modelPath, sensitivity, maxMouthOpen) =>
     ipcRenderer.invoke('ctrl-update-lipsync', modelPath, sensitivity, maxMouthOpen),

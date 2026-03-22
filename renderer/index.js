@@ -2,7 +2,7 @@
 import { initSceneOnly, initVRM, switchVRM, playMotion, getAlphaAtPixel,
          setCameraEnabled, getCameraOrbit, setCameraOrbit,
          updateCameraOrbit, updateCameraZoom, updateCameraTarget,
-         setExpression, setLipsync } from './vrm.js';
+         setExpression, setLipsync, setLighting } from './vrm.js';
 import { speak, stopCurrentSpeech, setSpeakerId } from './voicevox.js';
 import { askAI } from './ai.js';
 import { setupVBCableAnalyser, teardownVBCable } from './lipsync.js';
@@ -153,6 +153,11 @@ api.onSetExpression((expressionName) => {
 // ── Phase 13-4: 口パク設定リアルタイム更新 ────────────────────
 api.onSetLipsync(({ sensitivity, maxMouthOpen }) => {
   setLipsync(sensitivity, maxMouthOpen);
+});
+
+// ── Phase 13-5: ライティングリアルタイム更新 ──────────────────
+api.onSetLighting((params) => {
+  setLighting(params);
 });
 
 // ── Phase 10: VRMAモーション再生 ─────────────────────────────

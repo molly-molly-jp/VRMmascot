@@ -366,6 +366,46 @@ function setupIPC(config) {
       });
   });
 
+  // ── Phase 13-5: ライティング 即時更新（VRMウィンドウへ転送）─
+  ipcMain.handle('ctrl-update-lighting', (_, modelPath, params) => {
+    if (vrmWin && !vrmWin.isDestroyed())
+      vrmWin.webContents.send('do-set-lighting', params);
+    console.log('[main] lighting更新(メモリ):', params);
+    return { ok: true };
+  });
+
+  // ── Phase 13-5: ライティング 保存（config.json書き込み）─────
+  ipcMain.handle('ctrl-save-lighting', (_, modelPath, params) => {
+    const modelConf = ensureModelInConfig(config, modelPath);
+    if (!modelConf.lighting)         modelConf.lighting         = {};
+    if (!modelConf.lighting.ambient) modelConf.lighting.ambient  = {};
+    if (!modelConf.lighting.main)    modelConf.lighting.main     = {};
+    if (!modelConf.lighting.mtoon)   modelConf.lighting.mtoon    = {};
+    if (params.ambientIntensity  != null) modelConf.lighting.ambient.intensity      = params.ambientIntensity;
+    if (params.mainIntensity     != null) modelConf.lighting.main.intensity         = params.mainIntensity;
+    if (params.mainX             != null) modelConf.lighting.main.x                 = params.mainX;
+    if (params.shadingShiftFactor != null) modelConf.lighting.mtoon.shadingShiftFactor = params.shadingShiftFactor;
+    saveConfig(config);
+    console.log('[main] lighting保存(config.json):', params);
+    return { ok: true };
+  });
+
+  // ── Phase 13-5: モデルの有効ライティング設定を返す ──────────
+  // モデル個別設定があればそちらを優先、なければグローバルをフォールバック
+  ipcMain.handle('ctrl-get-lighting', (_, modelPath) => {
+    const globalL = config.lighting ?? {};
+    const modelConf = (config.groups ?? [])
+      .flatMap(g => g.models ?? [])
+      .find(m => m.path === modelPath);
+    const modelL = modelConf?.lighting ?? {};
+    return {
+      ambientIntensity:   modelL.ambient?.intensity   ?? globalL.ambient?.intensity   ?? 0.5,
+      mainIntensity:      modelL.main?.intensity       ?? globalL.main?.intensity       ?? 1.0,
+      mainX:              modelL.main?.x               ?? globalL.main?.x               ?? 3.0,
+      shadingShiftFactor: modelL.mtoon?.shadingShiftFactor ?? globalL.mtoon?.shadingShiftFactor ?? -0.2,
+    };
+  });
+
   // ── Phase 13-4: 口パク設定 即時更新（VRMウィンドウへ転送）──
   ipcMain.handle('ctrl-update-lipsync', (_, modelPath, sensitivity, maxMouthOpen) => {
     if (vrmWin && !vrmWin.isDestroyed())
