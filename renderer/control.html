@@ -15,73 +15,81 @@
       height: 100vh;
       overflow: hidden;
     }
+    /* ── タイトルバー ── */
     .titlebar {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      padding: 6px 12px;
+      padding: 5px 12px;
       background: #181825;
       border-bottom: 1px solid rgba(255,255,255,0.08);
       flex-shrink: 0;
     }
     .titlebar-title { font-size: 11px; font-weight: 600; color: #888; letter-spacing: 0.06em; }
-    #pin-btn {
-      padding: 3px 10px;
-      border: 1px solid rgba(255,255,255,0.2);
-      border-radius: 5px;
-      background: rgba(255,255,255,0.07);
-      color: #cdd6f4;
-      font-size: 11px;
-      cursor: pointer;
-      white-space: nowrap;
-      user-select: none;
+    /* ── タブバー ── */
+    .tab-bar {
+      display: flex;
+      background: #181825;
+      border-bottom: 2px solid rgba(255,255,255,0.08);
+      flex-shrink: 0;
     }
-    #pin-btn.on { background: #f5a623; border-color: #f5a623; color: #1e1e2e; font-weight: 700; }
+    .tab-btn {
+      padding: 6px 18px;
+      font-size: 12px; font-weight: 600; color: #888;
+      background: transparent; border: none;
+      border-bottom: 2px solid transparent; margin-bottom: -2px;
+      cursor: pointer; letter-spacing: 0.04em; user-select: none;
+      transition: color 0.15s;
+    }
+    .tab-btn:hover  { color: #cdd6f4; }
+    .tab-btn.active { color: #4a9eff; border-bottom-color: #4a9eff; }
+    /* ── タブコンテンツ ── */
+    .tab-panel { display: none; flex-direction: column; flex: 1; overflow-y: auto; }
+    .tab-panel.active { display: flex; }
+    /* ── セクション ── */
     .section {
-      padding: 8px 12px 7px;
-      border-bottom: 1px solid rgba(255,255,255,0.08);
+      padding: 7px 12px 6px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
       flex-shrink: 0;
     }
     .section-label {
       font-size: 10px; font-weight: 600; letter-spacing: 0.08em;
       color: #888; text-transform: uppercase; margin-bottom: 5px;
     }
+    /* ── ボタン共通 ── */
     .btn-row { display: flex; flex-wrap: wrap; gap: 5px; min-height: 28px; }
     .btn {
       padding: 4px 12px;
-      border: 1px solid rgba(255,255,255,0.2);
-      border-radius: 6px;
-      background: rgba(255,255,255,0.07);
-      color: #cdd6f4;
-      font-size: 12px;
-      cursor: pointer;
-      white-space: nowrap;
+      border: 1px solid rgba(255,255,255,0.2); border-radius: 6px;
+      background: rgba(255,255,255,0.07); color: #cdd6f4;
+      font-size: 12px; cursor: pointer; white-space: nowrap;
     }
     .btn:hover        { background: rgba(255,255,255,0.15); }
     .btn.active       { background: #4a9eff; border-color: #4a9eff; color: #fff; }
     .btn.active-model { background: #3dcc91; border-color: #3dcc91; color: #fff; }
     .btn.danger       { background: rgba(255,80,80,0.25); border-color: rgba(255,80,80,0.45); }
     .btn.danger:hover { background: rgba(255,80,80,0.45); }
-    /* Phase 8: DOM受信ボタン */
+    /* 最前面 */
+    #pin-btn.on { background: #f5a623; border-color: #f5a623; color: #1e1e2e; font-weight: 700; }
+    /* DOM受信 */
     #dom-toggle-btn { min-width: 130px; }
     #dom-toggle-btn.dom-on  { background: rgba(60,200,100,0.2); border-color: rgba(60,200,100,0.5); color: #3dcc91; }
     #dom-toggle-btn.dom-off { background: rgba(255,80,80,0.15); border-color: rgba(255,80,80,0.35); color: #f38ba8; }
-    /* Phase 11: カメラボタン */
+    /* カメラ */
     #camera-toggle-btn { min-width: 130px; }
     #camera-toggle-btn.cam-on  { background: rgba(80,160,255,0.25); border-color: rgba(80,160,255,0.6); color: #89b4fa; font-weight: 600; }
     #camera-toggle-btn.cam-off { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.2); color: #cdd6f4; }
-    /* Phase 11-2: プリセット */
-    .preset-row { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+    /* プリセット */
+    .preset-row, .preset-save-row { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
     .preset-group { display: flex; gap: 3px; align-items: center; }
     .preset-label { font-size: 11px; color: #888; min-width: 52px; text-align: right; padding-right: 2px; }
-    .btn.preset-save { padding: 4px 8px; font-size: 11px; background: rgba(245,166,35,0.15); border-color: rgba(245,166,35,0.4); color: #f5a623; }
+    .btn.preset-load { padding: 4px 10px; font-size: 11px; }
+    .btn.reset-cam   { padding: 4px 10px; font-size: 11px; background: rgba(255,255,255,0.05); }
+    .btn.preset-save { padding: 4px 10px; font-size: 11px; background: rgba(245,166,35,0.15); border-color: rgba(245,166,35,0.4); color: #f5a623; }
     .btn.preset-save:hover { background: rgba(245,166,35,0.3); }
-    .btn.preset-load { padding: 4px 8px; font-size: 11px; }
-    .btn.reset-cam  { padding: 4px 10px; font-size: 11px; background: rgba(255,255,255,0.05); }
-    /* Phase 10: ドロップダウン＋モーション */
-    .select-row { display: flex; gap: 6px; align-items: center; }
+    /* ドロップダウン */
+    .select-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
     select.ctrl-select {
-      flex: 1; padding: 5px 8px;
+      flex: 1; min-width: 120px; padding: 5px 8px;
       border: 1px solid rgba(255,255,255,0.2); border-radius: 6px;
       background: rgba(255,255,255,0.07); color: #cdd6f4;
       font-size: 12px; font-family: inherit; outline: none; cursor: pointer;
@@ -89,6 +97,7 @@
     }
     select.ctrl-select:focus { border-color: #4a9eff; }
     select.ctrl-select option { background: #1e1e2e; color: #cdd6f4; }
+    /* テキスト入力 */
     .input-row { display: flex; gap: 6px; align-items: flex-end; }
     #text-input {
       flex: 1; min-width: 0; padding: 6px 10px;
@@ -97,14 +106,14 @@
       font-size: 13px; outline: none; resize: none; font-family: inherit; line-height: 1.4;
     }
     #text-input:focus { border-color: #4a9eff; }
-    #send-btn { flex-shrink: 0; }
+    /* ステータス・ヒント */
     #status-area {
-      flex: 1; display: flex; align-items: center; justify-content: center;
-      padding: 6px 12px; font-size: 13px; color: #a6adc8; min-height: 32px;
+      flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+      padding: 5px 12px; font-size: 13px; color: #a6adc8; min-height: 30px;
     }
     #status-area.busy  { color: #f5c842; }
     #status-area.error { color: #f38ba8; }
-    .hint { padding: 5px 12px 7px; font-size: 11px; color: #45475a; line-height: 1.6; flex-shrink: 0; }
+    .hint { padding: 4px 12px 6px; font-size: 11px; color: #45475a; line-height: 1.6; flex-shrink: 0; }
     kbd {
       background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15);
       border-radius: 3px; padding: 1px 5px; font-size: 10px;
@@ -113,80 +122,120 @@
 </head>
 <body>
 
+  <!-- タイトルバー -->
   <div class="titlebar">
     <span class="titlebar-title">VRM MASCOT CONTROL</span>
-    <button id="pin-btn">📌 最前面 OFF</button>
   </div>
 
-  <div class="section">
-    <div class="section-label">グループ（口パク入力）</div>
-    <div class="btn-row" id="group-bar"></div>
+  <!-- タブバー（data-tab属性でパネルIDと対応。3タブ以上への拡張も同パターン）-->
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="shoot">📹 撮影</button>
+    <button class="tab-btn"        data-tab="settings">⚙️ 設定</button>
   </div>
 
-  <div class="section">
-    <div class="section-label">モデル</div>
-    <div class="select-row">
-      <select id="model-select" class="ctrl-select">
-        <option value="">— モデルを選択 —</option>
-      </select>
-      <button id="model-load-btn" class="btn">読み込み</button>
-      <button id="model-entrance-a-btn" class="btn" title="モデルを読み込み、登場演出Aを再生します">🎬 登場A</button>
-      <button id="model-entrance-b-btn" class="btn" title="モデルを読み込み、登場演出Bを再生します（撮影前に差し替え可）">🎭 登場B</button>
-      <button id="model-entrance-c-btn" class="btn" title="モデルを読み込み、motions・soundsフォルダからランダム抽選して演出を再生します">🎲 登場C</button>
+  <!-- ══════════════════ 撮影タブ ══════════════════ -->
+  <div class="tab-panel active" id="tab-shoot">
+
+    <div class="section">
+      <div class="section-label">グループ（口パク入力）</div>
+      <div class="btn-row" id="group-bar"></div>
     </div>
-  </div>
 
-  <div class="section">
-    <div class="section-label">モーション（VRMA）</div>
-    <div class="select-row">
-      <select id="motion-select" class="ctrl-select">
-        <option value="">— モーションを選択 —</option>
-      </select>
-      <button id="motion-play-btn" class="btn">▶ 再生</button>
-      <button id="motion-random-btn" class="btn" title="motionsフォルダからランダムで1つ再生">🎲 ランダム</button>
-    </div>
-  </div>
-
-  <div class="section">
-    <div class="section-label">AI会話 / テキスト読み上げ</div>
-    <div class="input-row">
-      <textarea id="text-input" rows="3" placeholder="Ctrl+Enter で送信…"></textarea>
-      <button id="send-btn" class="btn">送信</button>
-    </div>
-  </div>
-
-  <div class="section" style="border-bottom:none; padding-top:7px;">
-    <div class="btn-row">
-      <button id="clear-btn" class="btn danger">⏹ 読み上げ停止</button>
-      <button id="dom-toggle-btn" class="btn dom-on">🔴 DOM取得 停止</button>
-      <button id="camera-toggle-btn" class="btn cam-off">🎥 カメラ操作 OFF</button>
-    </div>
-  </div>
-
-  <div class="section" style="padding-top:7px;">
-    <div class="section-label">カメラプリセット</div>
-    <div class="preset-row">
-      <div class="preset-group">
-        <span class="preset-label">プリセット1</span>
-        <button class="btn preset-save" data-preset="0">💾 保存</button>
-        <button class="btn preset-load" data-preset="0">📷 呼び出し</button>
+    <div class="section">
+      <div class="section-label">モデル</div>
+      <div class="select-row">
+        <select id="model-select" class="ctrl-select">
+          <option value="">— モデルを選択 —</option>
+        </select>
+        <button id="model-load-btn" class="btn">読み込み</button>
+        <button id="model-entrance-a-btn" class="btn" title="モデルを読み込み、登場演出Aを再生">🎬 登場A</button>
+        <button id="model-entrance-b-btn" class="btn" title="モデルを読み込み、登場演出Bを再生（差し替え可）">🎭 登場B</button>
+        <button id="model-entrance-c-btn" class="btn" title="entrance_cフォルダからランダム抽選して演出を再生">🎲 登場C</button>
       </div>
-      <div class="preset-group">
-        <span class="preset-label">プリセット2</span>
-        <button class="btn preset-save" data-preset="1">💾 保存</button>
-        <button class="btn preset-load" data-preset="1">📷 呼び出し</button>
-      </div>
-      <div class="preset-group">
-        <span class="preset-label">プリセット3</span>
-        <button class="btn preset-save" data-preset="2">💾 保存</button>
-        <button class="btn preset-load" data-preset="2">📷 呼び出し</button>
-      </div>
-      <button id="camera-reset-btn" class="btn reset-cam">↩ リセット</button>
     </div>
-  </div>
 
+    <div class="section">
+      <div class="section-label">モーション（VRMA）</div>
+      <div class="select-row">
+        <select id="motion-select" class="ctrl-select">
+          <option value="">— モーションを選択 —</option>
+        </select>
+        <button id="motion-play-btn" class="btn">▶ 再生</button>
+        <button id="motion-random-btn" class="btn" title="motionsフォルダからランダムで1つ再生">🎲 ランダム</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="btn-row">
+        <button id="clear-btn" class="btn danger">⏹ 読み上げ停止</button>
+        <button id="dom-toggle-btn" class="btn dom-on">🔴 DOM取得 停止</button>
+        <button id="camera-toggle-btn" class="btn cam-off">🎥 カメラ操作 OFF</button>
+      </div>
+    </div>
+
+    <div class="section" style="border-bottom:none;">
+      <div class="section-label">カメラプリセット（呼び出し）</div>
+      <div class="preset-row">
+        <div class="preset-group">
+          <span class="preset-label">プリセット1</span>
+          <button class="btn preset-load" data-preset="0">📷 呼び出し</button>
+        </div>
+        <div class="preset-group">
+          <span class="preset-label">プリセット2</span>
+          <button class="btn preset-load" data-preset="1">📷 呼び出し</button>
+        </div>
+        <div class="preset-group">
+          <span class="preset-label">プリセット3</span>
+          <button class="btn preset-load" data-preset="2">📷 呼び出し</button>
+        </div>
+        <button id="camera-reset-btn" class="btn reset-cam">↩ リセット</button>
+      </div>
+    </div>
+
+  </div><!-- /tab-shoot -->
+
+  <!-- ══════════════════ 設定タブ ══════════════════ -->
+  <div class="tab-panel" id="tab-settings">
+
+    <div class="section">
+      <div class="section-label">表示設定</div>
+      <div class="btn-row">
+        <button id="pin-btn" class="btn">📌 最前面 OFF</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">カメラプリセット（保存）</div>
+      <div class="preset-save-row">
+        <div class="preset-group">
+          <span class="preset-label">プリセット1</span>
+          <button class="btn preset-save" data-preset="0">💾 保存</button>
+        </div>
+        <div class="preset-group">
+          <span class="preset-label">プリセット2</span>
+          <button class="btn preset-save" data-preset="1">💾 保存</button>
+        </div>
+        <div class="preset-group">
+          <span class="preset-label">プリセット3</span>
+          <button class="btn preset-save" data-preset="2">💾 保存</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="section" style="border-bottom:none;">
+      <div class="section-label">AI会話 / テキスト読み上げ</div>
+      <div class="input-row">
+        <textarea id="text-input" rows="3" placeholder="Ctrl+Enter で送信…"></textarea>
+        <button id="send-btn" class="btn">送信</button>
+      </div>
+    </div>
+
+    <!-- タスク2以降の設定項目はここに追加 -->
+
+  </div><!-- /tab-settings -->
+
+  <!-- ステータス・ヒント（タブ共通） -->
   <div id="status-area">起動中...</div>
-
   <div class="hint">
     <kbd>Ctrl+Q</kbd> クリップボード読み上げ &nbsp;
     <kbd>Ctrl+Enter</kbd> テキスト送信 &nbsp;
@@ -194,29 +243,43 @@
   </div>
 
   <script>
+    // ── タブ切り替え ─────────────────────────────────────────
+    (function() {
+      var tabBtns   = document.querySelectorAll('.tab-btn');
+      var tabPanels = document.querySelectorAll('.tab-panel');
+      tabBtns.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var target = btn.dataset.tab;
+          tabBtns.forEach(function(b)   { b.classList.toggle('active', b.dataset.tab === target); });
+          tabPanels.forEach(function(p) { p.classList.toggle('active', p.id === 'tab-' + target); });
+        });
+      });
+    })();
+
+    // ── Electron API 待機 ────────────────────────────────────
     function waitForAPI(cb) {
       if (window.electronAPI) { cb(window.electronAPI); return; }
-      let tries = 0;
-      const t = setInterval(function() {
+      var tries = 0;
+      var t = setInterval(function() {
         tries++;
         if (window.electronAPI) { clearInterval(t); cb(window.electronAPI); }
-        else if (tries > 40) { clearInterval(t); document.getElementById('status-area').textContent = 'エラー: electronAPI未定義'; }
+        else if (tries > 40)    { clearInterval(t); document.getElementById('status-area').textContent = 'エラー: electronAPI未定義'; }
       }, 50);
     }
 
     waitForAPI(function(api) {
-      var groupBar      = document.getElementById('group-bar');
-      var textInput     = document.getElementById('text-input');
-      var sendBtn       = document.getElementById('send-btn');
-      var clearBtn      = document.getElementById('clear-btn');
-      var pinBtn        = document.getElementById('pin-btn');
-      var domToggleBtn  = document.getElementById('dom-toggle-btn');
-      var statusEl      = document.getElementById('status-area');
+      var groupBar     = document.getElementById('group-bar');
+      var textInput    = document.getElementById('text-input');
+      var sendBtn      = document.getElementById('send-btn');
+      var clearBtn     = document.getElementById('clear-btn');
+      var pinBtn       = document.getElementById('pin-btn');
+      var domToggleBtn = document.getElementById('dom-toggle-btn');
+      var statusEl     = document.getElementById('status-area');
 
       var configData      = null;
       var currentGroupIdx = 0;
       var alwaysOnTop     = false;
-      var domReceiveOn    = true;   // 初期状態（get-dom-receive-state で上書き）
+      var domReceiveOn    = true;
 
       // ─── ステータス ──────────────────────────────────────────
       function setStatus(text) {
@@ -230,41 +293,34 @@
       // ─── 最前面トグル ────────────────────────────────────────
       function updatePinBtn() {
         pinBtn.textContent = alwaysOnTop ? '📌 最前面 ON' : '📌 最前面 OFF';
-        pinBtn.className   = alwaysOnTop ? 'on' : '';
+        pinBtn.className   = 'btn' + (alwaysOnTop ? ' on' : '');
       }
       pinBtn.addEventListener('click', function() {
         api.toggleAlwaysOnTop().then(function(next) {
-          alwaysOnTop = next;
-          updatePinBtn();
+          alwaysOnTop = next; updatePinBtn();
         });
       });
       updatePinBtn();
 
-      // ─── Phase 8: DOM受信トグル ──────────────────────────────
+      // ─── DOM受信トグル ───────────────────────────────────────
       function updateDomBtn() {
         if (domReceiveOn) {
           domToggleBtn.textContent = '🔴 DOM取得 停止';
           domToggleBtn.className   = 'btn dom-on';
-          domToggleBtn.title       = 'クリックでGrok DOM取得を無効化します';
         } else {
           domToggleBtn.textContent = '🟢 DOM取得 再開';
           domToggleBtn.className   = 'btn dom-off';
-          domToggleBtn.title       = 'クリックでGrok DOM取得を有効化します';
         }
       }
       domToggleBtn.addEventListener('click', function() {
         api.toggleDomReceive().then(function(next) {
-          domReceiveOn = next;
-          updateDomBtn();
+          domReceiveOn = next; updateDomBtn();
           setStatus(next ? 'DOM取得 有効にしました' : 'DOM取得 停止しました');
           setTimeout(function() { setStatus(''); }, 1800);
         });
       });
-      // 起動時にサーバー側の状態を取得して同期
-      api.getDomReceiveState().then(function(state) {
-        domReceiveOn = state;
-        updateDomBtn();
-      }).catch(function() { updateDomBtn(); });
+      api.getDomReceiveState().then(function(state) { domReceiveOn = state; updateDomBtn(); })
+        .catch(function() { updateDomBtn(); });
 
       // ─── グループボタン ──────────────────────────────────────
       function renderGroupButtons() {
@@ -285,110 +341,136 @@
         });
       }
 
-      // ─── Phase 10: モデルドロップダウン ─────────────────────
-      var modelSelect   = document.getElementById('model-select');
-      var modelLoadBtn  = document.getElementById('model-load-btn');
+      // ─── モデルドロップダウン ────────────────────────────────
+      var modelSelect  = document.getElementById('model-select');
+      var modelLoadBtn = document.getElementById('model-load-btn');
 
       function populateModelSelect(groupId) {
         modelSelect.innerHTML = '<option value="">— モデルを選択 —</option>';
         api.scanVrmFiles(groupId).then(function(files) {
           files.forEach(function(f) {
             var opt = document.createElement('option');
-            opt.value       = f.path;
-            opt.textContent = f.label;
+            opt.value = f.path; opt.textContent = f.label;
             modelSelect.appendChild(opt);
           });
-          // 現在グループのカレントモデルを初期選択
           var group = configData.groups[currentGroupIdx];
           if (group && group.models && group.models.length > 0) {
             var currentPath = group.models[group.currentModel ?? 0]?.path;
             if (currentPath) modelSelect.value = currentPath;
           }
           setStatus('');
-        }).catch(function(err) {
-          setStatus('モデル一覧取得失敗: ' + err.message);
-        });
+        }).catch(function(err) { setStatus('モデル一覧取得失敗: ' + err.message); });
       }
 
       modelLoadBtn.addEventListener('click', function() {
         var p = modelSelect.value;
         if (!p) { setStatus('モデルを選択してください'); return; }
-        api.switchModel(p);
-        setStatus('モデル読み込み中...');
+        api.switchModel(p); setStatus('モデル読み込み中...');
       });
 
-      // ─── Phase 10-3: 登場演出A ─────────────────────────────────
-      var modelEntranceABtn = document.getElementById('model-entrance-a-btn');
-      modelEntranceABtn.addEventListener('click', function() {
+      // 登場演出 A / B / C
+      document.getElementById('model-entrance-a-btn').addEventListener('click', function() {
         var p = modelSelect.value;
         if (!p) { setStatus('モデルを選択してください'); return; }
-        api.entranceA(p);
-        setStatus('登場演出A 再生中...');
+        api.entranceA(p); setStatus('登場演出A 再生中...');
+        setTimeout(function() { setStatus(''); }, 2000);
+      });
+      document.getElementById('model-entrance-b-btn').addEventListener('click', function() {
+        var p = modelSelect.value;
+        if (!p) { setStatus('モデルを選択してください'); return; }
+        api.entranceB(p); setStatus('登場演出B 再生中...');
+        setTimeout(function() { setStatus(''); }, 2000);
+      });
+      document.getElementById('model-entrance-c-btn').addEventListener('click', function() {
+        var p = modelSelect.value;
+        if (!p) { setStatus('モデルを選択してください'); return; }
+        api.entranceC(p); setStatus('登場演出C（ランダム）再生中...');
         setTimeout(function() { setStatus(''); }, 2000);
       });
 
-      // ─── Phase 10-3: 登場演出B ─────────────────────────────────
-      var modelEntranceBBtn = document.getElementById('model-entrance-b-btn');
-      modelEntranceBBtn.addEventListener('click', function() {
-        var p = modelSelect.value;
-        if (!p) { setStatus('モデルを選択してください'); return; }
-        api.entranceB(p);
-        setStatus('登場演出B 再生中...');
-        setTimeout(function() { setStatus(''); }, 2000);
-      });
-
-      // ─── Phase 10-3: 登場演出C（ランダム抽選） ─────────────────
-      var modelEntranceCBtn = document.getElementById('model-entrance-c-btn');
-      modelEntranceCBtn.addEventListener('click', function() {
-        var p = modelSelect.value;
-        if (!p) { setStatus('モデルを選択してください'); return; }
-        api.entranceC(p);
-        setStatus('登場演出C（ランダム）再生中...');
-        setTimeout(function() { setStatus(''); }, 2000);
-      });
-
-      // ─── Phase 10: モーションドロップダウン ─────────────────
+      // ─── モーションドロップダウン ─────────────────────────────
       var motionSelect  = document.getElementById('motion-select');
-      var motionPlayBtn = document.getElementById('motion-play-btn');
 
       function populateMotionSelect() {
         motionSelect.innerHTML = '<option value="">— モーションを選択 —</option>';
         api.scanVrmaFiles().then(function(files) {
           files.forEach(function(f) {
             var opt = document.createElement('option');
-            opt.value       = f.path;
-            opt.textContent = f.label;
+            opt.value = f.path; opt.textContent = f.label;
             motionSelect.appendChild(opt);
           });
-        }).catch(function(err) {
-          console.warn('[ctrl] VRMA一覧取得失敗:', err.message);
-        });
+        }).catch(function(err) { console.warn('[ctrl] VRMA一覧取得失敗:', err.message); });
       }
 
-      motionPlayBtn.addEventListener('click', function() {
+      document.getElementById('motion-play-btn').addEventListener('click', function() {
         var p = motionSelect.value;
         if (!p) { setStatus('モーションを選択してください'); return; }
-        api.playMotion(p);
-        setStatus('モーション再生中...');
+        api.playMotion(p); setStatus('モーション再生中...');
         setTimeout(function() { setStatus(''); }, 1500);
       });
 
-      // ─── Phase 10-2: ランダム再生 ────────────────────────────
-      var motionRandomBtn = document.getElementById('motion-random-btn');
-      motionRandomBtn.addEventListener('click', function() {
+      document.getElementById('motion-random-btn').addEventListener('click', function() {
         api.scanVrmaFiles().then(function(files) {
-          if (!files || files.length === 0) {
-            setStatus('VRMAファイルが見つかりません');
-            return;
-          }
+          if (!files || files.length === 0) { setStatus('VRMAファイルが見つかりません'); return; }
           var chosen = files[Math.floor(Math.random() * files.length)];
-          // ドロップダウンの選択もランダム結果に合わせる（視認性のため）
           motionSelect.value = chosen.path;
           api.playMotion(chosen.path);
           setStatus('ランダム再生: ' + chosen.label);
           setTimeout(function() { setStatus(''); }, 2000);
-        }).catch(function(err) {
-          setStatus('エラー: ' + err.message);
+        }).catch(function(err) { setStatus('エラー: ' + err.message); });
+      });
+
+      // ─── 読み上げ停止 ────────────────────────────────────────
+      clearBtn.addEventListener('click', function() {
+        api.clearQueue(); setStatus('停止しました');
+        setTimeout(function() { setStatus(''); }, 1500);
+      });
+
+      // ─── カメラ操作トグル ─────────────────────────────────────
+      var cameraToggleBtn = document.getElementById('camera-toggle-btn');
+      var cameraOn = false;
+      function updateCameraBtn() {
+        if (cameraOn) {
+          cameraToggleBtn.textContent = '🎥 カメラ操作 ON';
+          cameraToggleBtn.className   = 'btn cam-on';
+        } else {
+          cameraToggleBtn.textContent = '🎥 カメラ操作 OFF';
+          cameraToggleBtn.className   = 'btn cam-off';
+        }
+      }
+      cameraToggleBtn.addEventListener('click', function() {
+        api.toggleCamera().then(function(next) {
+          cameraOn = next; updateCameraBtn();
+          setStatus(next ? 'カメラ操作: ON（右ドラッグ回転 / 中ドラッグパン / Shift+ホイールズーム）' : 'カメラ操作: OFF');
+          setTimeout(function() { setStatus(''); }, 2500);
+        });
+      });
+      updateCameraBtn();
+
+      // ─── カメラプリセット 呼び出し（撮影タブ）───────────────
+      document.querySelectorAll('.preset-load').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var index = parseInt(btn.dataset.preset);
+          api.loadPreset(index);
+          setStatus('プリセット' + (index + 1) + ' を呼び出しました');
+          setTimeout(function() { setStatus(''); }, 1500);
+        });
+      });
+      document.getElementById('camera-reset-btn').addEventListener('click', function() {
+        api.resetCamera(); setStatus('カメラをリセットしました');
+        setTimeout(function() { setStatus(''); }, 1500);
+      });
+
+      // ─── カメラプリセット 保存（設定タブ）──────────────────
+      document.querySelectorAll('.preset-save').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var index = parseInt(btn.dataset.preset);
+          api.savePreset(index).then(function(result) {
+            setStatus(result && result.ok
+              ? 'プリセット' + (index + 1) + ' を保存しました'
+              : 'プリセット保存失敗（モデルを先に読み込んでください）');
+            setTimeout(function() { setStatus(''); }, 2000);
+          });
         });
       });
 
@@ -403,91 +485,25 @@
       }
       sendBtn.addEventListener('click', sendText);
       textInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter' && e.ctrlKey && !e.isComposing) {
-          e.preventDefault();
-          sendText();
-        }
+        if (e.key === 'Enter' && e.ctrlKey && !e.isComposing) { e.preventDefault(); sendText(); }
       });
       textInput.addEventListener('input', function() {
         textInput.style.height = 'auto';
         textInput.style.height = Math.min(textInput.scrollHeight, 120) + 'px';
       });
 
-      // ─── 停止 ────────────────────────────────────────────────
-      clearBtn.addEventListener('click', function() {
-        api.clearQueue();
-        setStatus('停止しました');
-        setTimeout(function() { setStatus(''); }, 1500);
-      });
-
-      // ─── Phase 11: カメラ操作トグル ──────────────────────────
-      var cameraToggleBtn = document.getElementById('camera-toggle-btn');
-      var cameraOn        = false;
-      function updateCameraBtn() {
-        if (cameraOn) {
-          cameraToggleBtn.textContent = '🎥 カメラ操作 ON';
-          cameraToggleBtn.className   = 'btn cam-on';
-        } else {
-          cameraToggleBtn.textContent = '🎥 カメラ操作 OFF';
-          cameraToggleBtn.className   = 'btn cam-off';
-        }
-      }
-      cameraToggleBtn.addEventListener('click', function() {
-        api.toggleCamera().then(function(next) {
-          cameraOn = next;
-          updateCameraBtn();
-          setStatus(next ? 'カメラ操作: ON（右ドラッグ回転 / 中ドラッグ上下パン / Shift+ホイールズーム）' : 'カメラ操作: OFF');
-          setTimeout(function() { setStatus(''); }, 2500);
-        });
-      });
-      updateCameraBtn();
-
-      // ─── Phase 11-2: カメラプリセット ────────────────────────
-      document.querySelectorAll('.preset-save').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-          var index = parseInt(btn.dataset.preset);
-          api.savePreset(index).then(function(result) {
-            if (result && result.ok) {
-              setStatus('プリセット' + (index + 1) + ' を保存しました');
-            } else {
-              setStatus('プリセット保存失敗（モデルを先に読み込んでください）');
-            }
-            setTimeout(function() { setStatus(''); }, 2000);
-          });
-        });
-      });
-
-      document.querySelectorAll('.preset-load').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-          var index = parseInt(btn.dataset.preset);
-          api.loadPreset(index);
-          setStatus('プリセット' + (index + 1) + ' を呼び出しました');
-          setTimeout(function() { setStatus(''); }, 1500);
-        });
-      });
-
-      document.getElementById('camera-reset-btn').addEventListener('click', function() {
-        api.resetCamera();
-        setStatus('カメラをリセットしました');
-        setTimeout(function() { setStatus(''); }, 1500);
-      });
-
       // ─── 起動 ────────────────────────────────────────────────
       api.getConfig().then(function(config) {
         configData = config;
         if (!configData || !configData.groups) {
-          setStatus('エラー: config に groups がありません');
-          return;
+          setStatus('エラー: config に groups がありません'); return;
         }
         renderGroupButtons();
         var firstGroup = configData.groups[currentGroupIdx];
         if (firstGroup) populateModelSelect(firstGroup.id);
         populateMotionSelect();
         setStatus('');
-        textInput.focus();
-      }).catch(function(err) {
-        setStatus('エラー: ' + err.message);
-      });
+      }).catch(function(err) { setStatus('エラー: ' + err.message); });
 
     }); // waitForAPI
   </script>
