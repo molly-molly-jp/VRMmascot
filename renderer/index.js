@@ -2,7 +2,7 @@
 import { initSceneOnly, initVRM, switchVRM, playMotion, getAlphaAtPixel,
          setCameraEnabled, getCameraOrbit, setCameraOrbit,
          updateCameraOrbit, updateCameraZoom, updateCameraTarget,
-         setExpression } from './vrm.js';
+         setExpression, setLipsync } from './vrm.js';
 import { speak, stopCurrentSpeech, setSpeakerId } from './voicevox.js';
 import { askAI } from './ai.js';
 import { setupVBCableAnalyser, teardownVBCable } from './lipsync.js';
@@ -148,6 +148,11 @@ api.onSpeakQueue((text) => enqueue(text));
 api.onSetExpression((expressionName) => {
   console.log('[vrm-win] 表情切り替え要求:', expressionName);
   setExpression(expressionName);
+});
+
+// ── Phase 13-4: 口パク設定リアルタイム更新 ────────────────────
+api.onSetLipsync(({ sensitivity, maxMouthOpen }) => {
+  setLipsync(sensitivity, maxMouthOpen);
 });
 
 // ── Phase 10: VRMAモーション再生 ─────────────────────────────

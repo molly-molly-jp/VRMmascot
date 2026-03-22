@@ -270,18 +270,29 @@ function setupIPC(config) {
     preset.distance = orbit.distance;
     preset.rotX     = orbit.rotX;
     preset.rotY     = orbit.rotY;
+    // ── Phase 13-3: VRMウィンドウのスクリーン座標も保存 ────────
+    const [winX, winY] = vrmWin.getPosition();
+    preset.windowX = winX;
+    preset.windowY = winY;
     saveConfig(config);
-    console.log(`[main] プリセット${index + 1} 保存:`, orbit);
+    console.log(`[main] プリセット${index + 1} 保存:`, orbit, `window:(${winX},${winY})`);
     return { ok: true, orbit };
   });
 
-  // ── Phase 11-2: プリセット呼び出し ──────────────────────────
+  // ── Phase 11-2 / 13-3: プリセット呼び出し ───────────────────
   ipcMain.on('ctrl-load-preset', (_, index) => {
     const preset = config.camera?.presets?.[index];
     if (!preset) return console.warn('[main] プリセット未設定:', index);
-    console.log(`[main] プリセット${index + 1} 呼び出し:`, preset);
+    // カメラパラメータをVRMウィンドウへ送信
     if (vrmWin && !vrmWin.isDestroyed())
       vrmWin.webContents.send('do-set-camera-orbit', preset);
+    // ── Phase 13-3: windowX/Y があればウィンドウ位置を復元 ────
+    if (preset.windowX != null && preset.windowY != null) {
+      vrmWin.setPosition(preset.windowX, preset.windowY);
+      console.log(`[main] プリセット${index + 1} 呼び出し: camera+window(${preset.windowX},${preset.windowY})`);
+    } else {
+      console.log(`[main] プリセット${index + 1} 呼び出し: cameraのみ（windowX/Y未設定）`);
+    }
   });
 
   // ── Phase 11-2: カメラリセット ──────────────────────────────
@@ -353,6 +364,25 @@ function setupIPC(config) {
         randomMotion: chosen.motion,
         randomSound:  chosen.sound,
       });
+  });
+
+  // ── Phase 13-4: 口パク設定 即時更新（VRMウィンドウへ転送）──
+  ipcMain.handle('ctrl-update-lipsync', (_, modelPath, sensitivity, maxMouthOpen) => {
+    if (vrmWin && !vrmWin.isDestroyed())
+      vrmWin.webContents.send('do-set-lipsync', { sensitivity, maxMouthOpen });
+    console.log(`[main] lipsync更新(メモリ) sensitivity:${sensitivity} maxMouthOpen:${maxMouthOpen}`);
+    return { ok: true };
+  });
+
+  // ── Phase 13-4: 口パク設定 保存（config.json書き込み）───────
+  ipcMain.handle('ctrl-save-lipsync', (_, modelPath, sensitivity, maxMouthOpen) => {
+    const modelConf = ensureModelInConfig(config, modelPath);
+    if (!modelConf.lipsync) modelConf.lipsync = {};
+    modelConf.lipsync.sensitivity  = sensitivity;
+    modelConf.lipsync.maxMouthOpen = maxMouthOpen;
+    saveConfig(config);
+    console.log(`[main] lipsync保存(config.json) sensitivity:${sensitivity} maxMouthOpen:${maxMouthOpen}`);
+    return { ok: true };
   });
 
   // ── Phase 13-2: soundDelayMs 即時更新（メモリのみ）─────────

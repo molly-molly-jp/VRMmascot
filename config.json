@@ -368,8 +368,8 @@
           "label": "Grus",
           "path": "assets/groupB/Grus.vrm",
           "lipsync": {
-            "sensitivity": 1,
-            "maxMouthOpen": 1
+            "sensitivity": 0.4,
+            "maxMouthOpen": 0.8
           },
           "gaze": {
             "angleX": 0.08,

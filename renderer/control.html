@@ -232,7 +232,7 @@
     </div>
 
     <!-- タスク2: soundDelayMs UIチューニング -->
-    <div class="section" style="border-bottom:none;">
+    <div class="section">
       <div class="section-label">登場演出 soundDelayMs（現在のモデル）</div>
       <div style="display:flex; flex-direction:column; gap:6px;">
         <div style="display:flex; align-items:center; gap:6px;">
@@ -252,7 +252,27 @@
       </div>
     </div>
 
-    <!-- タスク4以降の設定項目はここに追加 -->
+    <!-- タスク4: 口パク調整UI -->
+    <div class="section" style="border-bottom:none;">
+      <div class="section-label">口パク調整（現在のモデル）</div>
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <div style="display:flex; align-items:center; gap:6px;">
+          <span style="font-size:11px; color:#888; width:100px;">sensitivity</span>
+          <button class="btn stepper-btn" id="lipsync-sens-down">▼</button>
+          <span id="lipsync-sens-val" style="font-size:13px; min-width:40px; text-align:center; color:#cdd6f4;">1.0</span>
+          <button class="btn stepper-btn" id="lipsync-sens-up">▲</button>
+          <button class="btn preset-save" id="lipsync-save" style="margin-left:4px;">💾 保存</button>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <span style="font-size:11px; color:#888; width:100px;">maxMouthOpen</span>
+          <button class="btn stepper-btn" id="lipsync-mouth-down">▼</button>
+          <span id="lipsync-mouth-val" style="font-size:13px; min-width:40px; text-align:center; color:#cdd6f4;">1.0</span>
+          <button class="btn stepper-btn" id="lipsync-mouth-up">▲</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- タスク5以降の設定項目はここに追加 -->
 
   </div><!-- /tab-settings -->
 
@@ -533,11 +553,84 @@
         setDelayUI(v.a, v.b);
       }
 
+      // ─── 13-4: 口パク調整UI ──────────────────────────────────
+      var lipsyncSensVal  = document.getElementById('lipsync-sens-val');
+      var lipsyncMouthVal = document.getElementById('lipsync-mouth-val');
+      var currentSens  = 1.0;
+      var currentMouth = 1.0;
+
+      function round1(v) { return Math.round(v * 10) / 10; }
+      function round2(v) { return Math.round(v * 100) / 100; }
+
+      function setLipsyncUI(s, m) {
+        currentSens  = s;
+        currentMouth = m;
+        lipsyncSensVal.textContent  = round1(s).toFixed(1);
+        lipsyncMouthVal.textContent = round2(m).toFixed(2);
+      }
+
+      function getLipsyncFromConfig(modelPath) {
+        for (var gi = 0; gi < (configData.groups || []).length; gi++) {
+          var models = configData.groups[gi].models || [];
+          for (var mi = 0; mi < models.length; mi++) {
+            if (models[mi].path === modelPath) {
+              var ls = models[mi].lipsync || {};
+              return {
+                s: ls.sensitivity  != null ? ls.sensitivity  : 1.0,
+                m: ls.maxMouthOpen != null ? ls.maxMouthOpen : 1.0,
+              };
+            }
+          }
+        }
+        return { s: 1.0, m: 1.0 };
+      }
+
+      function refreshLipsyncUI() {
+        var p = modelSelect.value;
+        if (!p || !configData) { setLipsyncUI(1.0, 1.0); return; }
+        var v = getLipsyncFromConfig(p);
+        setLipsyncUI(v.s, v.m);
+      }
+
+      document.getElementById('lipsync-sens-down').addEventListener('click', function() {
+        var v = round1(Math.max(0.1, currentSens - 0.1));
+        setLipsyncUI(v, currentMouth);
+        var p = modelSelect.value;
+        if (p) api.updateLipsync(p, currentSens, currentMouth);
+      });
+      document.getElementById('lipsync-sens-up').addEventListener('click', function() {
+        var v = round1(Math.min(3.0, currentSens + 0.1));
+        setLipsyncUI(v, currentMouth);
+        var p = modelSelect.value;
+        if (p) api.updateLipsync(p, currentSens, currentMouth);
+      });
+      document.getElementById('lipsync-mouth-down').addEventListener('click', function() {
+        var v = round2(Math.max(0.1, currentMouth - 0.05));
+        setLipsyncUI(currentSens, v);
+        var p = modelSelect.value;
+        if (p) api.updateLipsync(p, currentSens, currentMouth);
+      });
+      document.getElementById('lipsync-mouth-up').addEventListener('click', function() {
+        var v = round2(Math.min(1.0, currentMouth + 0.05));
+        setLipsyncUI(currentSens, v);
+        var p = modelSelect.value;
+        if (p) api.updateLipsync(p, currentSens, currentMouth);
+      });
+      document.getElementById('lipsync-save').addEventListener('click', function() {
+        var p = modelSelect.value;
+        if (!p) { setStatus('モデルを選択してください'); return; }
+        api.saveLipsync(p, currentSens, currentMouth).then(function(r) {
+          setStatus(r.ok ? '口パク設定を保存しました' : '保存失敗');
+          setTimeout(function() { setStatus(''); }, 1800);
+        });
+      });
+
       // モデル切替時はgetConfigを再取得して最新値を反映
       modelSelect.addEventListener('change', function() {
         api.getConfig().then(function(cfg) {
           configData = cfg;
           refreshDelayUI();
+          refreshLipsyncUI();
         });
       });
 
@@ -618,6 +711,7 @@
         if (firstGroup) populateModelSelect(firstGroup.id);
         populateMotionSelect();
         refreshDelayUI();
+        refreshLipsyncUI();
         setStatus('');
       }).catch(function(err) { setStatus('エラー: ' + err.message); });
 

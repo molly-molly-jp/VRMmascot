@@ -830,6 +830,16 @@ export async function initVRM(canvasId, vrmPath, lipsyncConfig = {}, blinkConfig
   startAnimLoop();
 }
 
+/**
+ * Phase 13-4: 口パク設定をリアルタイムで更新する。
+ * switchVRM を呼ばずに即時反映させたいとき（UI調整中など）に使う。
+ */
+export function setLipsync(sensitivity, maxMouthOpen) {
+  lipSyncSensitivity  = sensitivity;
+  lipSyncMaxMouthOpen = maxMouthOpen;
+  console.log('[VRM] setLipsync → sensitivity:', sensitivity, '| maxMouthOpen:', maxMouthOpen);
+}
+
 export async function switchVRM(vrmPath, lipsyncConfig = {}, blinkConfig = {}, gazeConfig = {}, idleMotionConfig = {}, restPoseConfig = {}) {
   console.log('[VRM] モデル切り替え:', vrmPath);
   // VRMA再生中なら停止
