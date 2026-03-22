@@ -86,6 +86,7 @@
     .btn.reset-cam   { padding: 4px 10px; font-size: 11px; background: rgba(255,255,255,0.05); }
     .btn.preset-save { padding: 4px 10px; font-size: 11px; background: rgba(245,166,35,0.15); border-color: rgba(245,166,35,0.4); color: #f5a623; }
     .btn.preset-save:hover { background: rgba(245,166,35,0.3); }
+    .btn.stepper-btn { padding: 4px 8px; font-size: 11px; min-width: 28px; }
     /* ドロップダウン */
     .select-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
     select.ctrl-select {
@@ -230,7 +231,28 @@
       </div>
     </div>
 
-    <!-- タスク2以降の設定項目はここに追加 -->
+    <!-- タスク2: soundDelayMs UIチューニング -->
+    <div class="section" style="border-bottom:none;">
+      <div class="section-label">登場演出 soundDelayMs（現在のモデル）</div>
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <div style="display:flex; align-items:center; gap:6px;">
+          <span style="font-size:11px; color:#888; width:72px;">🎬 パターンA</span>
+          <button class="btn stepper-btn" id="delay-a-down">▼</button>
+          <span id="delay-a-val" style="font-size:13px; min-width:52px; text-align:center; color:#cdd6f4;">0 ms</span>
+          <button class="btn stepper-btn" id="delay-a-up">▲</button>
+          <button class="btn preset-save" id="delay-a-save" style="margin-left:4px;">💾 保存</button>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <span style="font-size:11px; color:#888; width:72px;">🎭 パターンB</span>
+          <button class="btn stepper-btn" id="delay-b-down">▼</button>
+          <span id="delay-b-val" style="font-size:13px; min-width:52px; text-align:center; color:#cdd6f4;">0 ms</span>
+          <button class="btn stepper-btn" id="delay-b-up">▲</button>
+          <button class="btn preset-save" id="delay-b-save" style="margin-left:4px;">💾 保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- タスク4以降の設定項目はここに追加 -->
 
   </div><!-- /tab-settings -->
 
@@ -474,6 +496,99 @@
         });
       });
 
+      // ─── 13-2: soundDelayMs UI ───────────────────────────────
+      var delayAVal  = document.getElementById('delay-a-val');
+      var delayBVal  = document.getElementById('delay-b-val');
+      var currentDelayA = 0;
+      var currentDelayB = 0;
+
+      function setDelayUI(a, b) {
+        currentDelayA = a;
+        currentDelayB = b;
+        delayAVal.textContent = a + ' ms';
+        delayBVal.textContent = b + ' ms';
+      }
+
+      function getDelayFromConfig(modelPath) {
+        // configDataから該当モデルのsoundDelayMsを読む
+        for (var gi = 0; gi < (configData.groups || []).length; gi++) {
+          var models = configData.groups[gi].models || [];
+          for (var mi = 0; mi < models.length; mi++) {
+            if (models[mi].path === modelPath) {
+              var ent = models[mi].entrance || {};
+              return {
+                a: (ent.patternA && ent.patternA.soundDelayMs != null) ? ent.patternA.soundDelayMs : 0,
+                b: (ent.patternB && ent.patternB.soundDelayMs != null) ? ent.patternB.soundDelayMs : 0,
+              };
+            }
+          }
+        }
+        return { a: 0, b: 0 };
+      }
+
+      function refreshDelayUI() {
+        var p = modelSelect.value;
+        if (!p || !configData) { setDelayUI(0, 0); return; }
+        var v = getDelayFromConfig(p);
+        setDelayUI(v.a, v.b);
+      }
+
+      // モデル切替時はgetConfigを再取得して最新値を反映
+      modelSelect.addEventListener('change', function() {
+        api.getConfig().then(function(cfg) {
+          configData = cfg;
+          refreshDelayUI();
+        });
+      });
+
+      // ▲▼ボタン
+      document.getElementById('delay-a-down').addEventListener('click', function() {
+        var newVal = Math.max(0, currentDelayA - 200);
+        currentDelayA = newVal;
+        delayAVal.textContent = newVal + ' ms';
+        var p = modelSelect.value;
+        if (p) api.updateSoundDelay(p, 'patternA', newVal);
+      });
+      document.getElementById('delay-a-up').addEventListener('click', function() {
+        var newVal = currentDelayA + 200;
+        currentDelayA = newVal;
+        delayAVal.textContent = newVal + ' ms';
+        var p = modelSelect.value;
+        if (p) api.updateSoundDelay(p, 'patternA', newVal);
+      });
+      document.getElementById('delay-b-down').addEventListener('click', function() {
+        var newVal = Math.max(0, currentDelayB - 200);
+        currentDelayB = newVal;
+        delayBVal.textContent = newVal + ' ms';
+        var p = modelSelect.value;
+        if (p) api.updateSoundDelay(p, 'patternB', newVal);
+      });
+      document.getElementById('delay-b-up').addEventListener('click', function() {
+        var newVal = currentDelayB + 200;
+        currentDelayB = newVal;
+        delayBVal.textContent = newVal + ' ms';
+        var p = modelSelect.value;
+        if (p) api.updateSoundDelay(p, 'patternB', newVal);
+      });
+
+      // 保存ボタン
+      document.getElementById('delay-a-save').addEventListener('click', function() {
+        var p = modelSelect.value;
+        if (!p) { setStatus('モデルを選択してください'); return; }
+        api.saveSoundDelay(p, 'patternA', currentDelayA).then(function(r) {
+          setStatus(r.ok ? 'パターンA soundDelayMs を保存しました' : '保存失敗');
+          setTimeout(function() { setStatus(''); }, 1800);
+        });
+      });
+      document.getElementById('delay-b-save').addEventListener('click', function() {
+        var p = modelSelect.value;
+        if (!p) { setStatus('モデルを選択してください'); return; }
+        api.saveSoundDelay(p, 'patternB', currentDelayB).then(function(r) {
+          setStatus(r.ok ? 'パターンB soundDelayMs を保存しました' : '保存失敗');
+          setTimeout(function() { setStatus(''); }, 1800);
+        });
+      });
+
       // ─── テキスト送信 ────────────────────────────────────────
       function sendText() {
         var text = textInput.value.trim();
@@ -502,6 +617,7 @@
         var firstGroup = configData.groups[currentGroupIdx];
         if (firstGroup) populateModelSelect(firstGroup.id);
         populateMotionSelect();
+        refreshDelayUI();
         setStatus('');
       }).catch(function(err) { setStatus('エラー: ' + err.message); });
 

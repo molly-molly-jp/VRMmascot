@@ -67,6 +67,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // ── Phase 12-2: 表情切り替え ──────────────────────────────────
   onSetExpression:   (cb)    => ipcRenderer.on('do-set-expression', (_, name) => cb(name)),
 
+  // ── Phase 13-2: soundDelayMs ─────────────────────────────────
+  updateSoundDelay: (modelPath, pattern, value) =>
+    ipcRenderer.invoke('ctrl-update-sound-delay', modelPath, pattern, value),
+  saveSoundDelay: (modelPath, pattern, value) =>
+    ipcRenderer.invoke('ctrl-save-sound-delay', modelPath, pattern, value),
+
   // ── 共通 ────────────────────────────────────────────────────
   getConfig: () => ipcRenderer.invoke('get-config'),
 });

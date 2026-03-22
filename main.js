@@ -354,6 +354,27 @@ function setupIPC(config) {
         randomSound:  chosen.sound,
       });
   });
+
+  // ── Phase 13-2: soundDelayMs 即時更新（メモリのみ）─────────
+  ipcMain.handle('ctrl-update-sound-delay', (_, modelPath, pattern, value) => {
+    const modelConf = ensureModelInConfig(config, modelPath);
+    if (!modelConf.entrance) modelConf.entrance = {};
+    if (!modelConf.entrance[pattern]) modelConf.entrance[pattern] = {};
+    modelConf.entrance[pattern].soundDelayMs = value;
+    console.log(`[main] soundDelayMs更新(メモリ) ${pattern}: ${value}ms`);
+    return { ok: true };
+  });
+
+  // ── Phase 13-2: soundDelayMs 保存（config.json書き込み）─────
+  ipcMain.handle('ctrl-save-sound-delay', (_, modelPath, pattern, value) => {
+    const modelConf = ensureModelInConfig(config, modelPath);
+    if (!modelConf.entrance) modelConf.entrance = {};
+    if (!modelConf.entrance[pattern]) modelConf.entrance[pattern] = {};
+    modelConf.entrance[pattern].soundDelayMs = value;
+    saveConfig(config);
+    console.log(`[main] soundDelayMs保存(config.json) ${pattern}: ${value}ms`);
+    return { ok: true };
+  });
 }
 
 function setupShortcut(config) {
