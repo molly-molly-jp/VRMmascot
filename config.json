@@ -1,5 +1,6 @@
 {
   "shortcutKey": "Ctrl+Q",
+  "streamingTTS": false,
   "lighting": {
     "ambient": {
       "intensity": 0.5
@@ -31,31 +32,33 @@
     "presets": [
       {
         "label": "プリセット1",
-        "targetX": 0.12000004197170097,
-        "targetY": 0.9925064851525436,
-        "distance": 2.3445728820296603,
-        "rotX": -0.049999999999999996,
-        "rotY": 0.5350000000000001,
-        "windowX": 920,
-        "windowY": 27
+        "targetX": 0.016000041971700893,
+        "targetY": 1.1045064851525437,
+        "distance": 4.444572926783093,
+        "rotX": -0.025000000000000005,
+        "rotY": -0.02000000000000014,
+        "windowX": -121,
+        "windowY": 26
       },
       {
         "label": "プリセット2",
         "targetX": 0.016000041971700893,
         "targetY": 1.1045064851525437,
-        "distance": 0.844572850062923,
+        "distance": 2.3445728820296603,
         "rotX": -0.025000000000000005,
         "rotY": -0.02000000000000014,
-        "windowX": 461,
-        "windowY": -17
+        "windowX": 293,
+        "windowY": 10
       },
       {
         "label": "プリセット3",
-        "targetX": 0,
-        "targetY": 1.4,
-        "distance": 3,
-        "rotX": 0,
-        "rotY": 0
+        "targetX": 0.012000340961695024,
+        "targetY": 1.2055047904703975,
+        "distance": 0.6719294137744658,
+        "rotX": 0.05000000000000002,
+        "rotY": -0.23000000000000198,
+        "windowX": 150,
+        "windowY": 7
       }
     ]
   },
@@ -205,6 +208,18 @@
               "sound": "assets/sounds/entrance_custom.wav",
               "soundDelayMs": 2000
             }
+          },
+          "lighting": {
+            "ambient": {
+              "intensity": 0.75
+            },
+            "main": {
+              "intensity": 1.85,
+              "x": 1.5
+            },
+            "mtoon": {
+              "shadingShiftFactor": -0.15
+            }
           }
         },
         {
@@ -235,12 +250,24 @@
             "patternA": {
               "motion": "assets/motions/entrance_default.vrma",
               "sound": "assets/sounds/entrance_default.wav",
-              "soundDelayMs": 6150
+              "soundDelayMs": 3150
             },
             "patternB": {
               "motion": "",
               "sound": "",
               "soundDelayMs": 2000
+            }
+          },
+          "lighting": {
+            "ambient": {
+              "intensity": 0.85
+            },
+            "main": {
+              "intensity": 1.8,
+              "x": 2.2
+            },
+            "mtoon": {
+              "shadingShiftFactor": -0.05
             }
           }
         },
@@ -272,12 +299,24 @@
             "patternA": {
               "motion": "assets/motions/entrance_default.vrma",
               "sound": "assets/sounds/entrance_default.wav",
-              "soundDelayMs": 0
+              "soundDelayMs": 3000
             },
             "patternB": {
               "motion": "",
               "sound": "",
               "soundDelayMs": 0
+            }
+          },
+          "lighting": {
+            "ambient": {
+              "intensity": 1
+            },
+            "main": {
+              "intensity": 1.1,
+              "x": 0.8
+            },
+            "mtoon": {
+              "shadingShiftFactor": 0.05
             }
           }
         }
@@ -328,14 +367,14 @@
           },
           "lighting": {
             "ambient": {
-              "intensity": 0.85
+              "intensity": 0.75
             },
             "main": {
-              "intensity": 1.05,
-              "x": 2.2
+              "intensity": 1.3,
+              "x": 3
             },
             "mtoon": {
-              "shadingShiftFactor": 0.3
+              "shadingShiftFactor": 0.35
             }
           }
         },
@@ -412,11 +451,11 @@
               "intensity": 0.65
             },
             "main": {
-              "intensity": 0.8,
-              "x": 3.7
+              "intensity": 1.25,
+              "x": 1.2
             },
             "mtoon": {
-              "shadingShiftFactor": -0.15
+              "shadingShiftFactor": -0.35
             }
           }
         }

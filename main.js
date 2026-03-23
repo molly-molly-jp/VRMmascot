@@ -14,6 +14,8 @@ let ctrlWin;
 let currentGroupId     = null;   // 現在選択中グループID（ctrl-switch-group で更新）
 let domReceiveEnabled  = true;   // DOM受信の有効/無効フラグ
 let localServer        = null;   // port:3000 HTTPサーバー
+// Phase 14: ストリーミングTTSモード（config.jsonから初期化、UIから変更可能）
+let streamingTTSEnabled = true;  // デフォルトtrue。chrome拡張がGET /streaming-tts で取得
 
 function loadConfig() {
   try {
@@ -474,6 +476,17 @@ function setupIPC(config) {
     console.log(`[main] soundDelayMs保存(config.json) ${pattern}: ${value}ms`);
     return { ok: true };
   });
+
+  // ── Phase 14: streamingTTS トグル ────────────────────────
+  ipcMain.handle('ctrl-get-streaming-tts', () => streamingTTSEnabled);
+  ipcMain.handle('ctrl-set-streaming-tts', (_, enabled) => {
+    streamingTTSEnabled = !!enabled;
+    // config.json に永続化
+    config.streamingTTS = streamingTTSEnabled;
+    saveConfig(config);
+    console.log('[main] streamingTTS変更:', streamingTTSEnabled);
+    return streamingTTSEnabled;
+  });
 }
 
 function setupShortcut(config) {
@@ -523,6 +536,13 @@ function startLocalServer(config) {
     if (req.method === 'OPTIONS') {
       res.writeHead(204);
       res.end();
+      return;
+    }
+
+    // ── Phase 14: Chrome拡張がstreamingTTSモードを取得するエンドポイント ──
+    if (req.method === 'GET' && req.url === '/streaming-tts') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ enabled: streamingTTSEnabled }));
       return;
     }
 
@@ -581,6 +601,12 @@ app.whenReady().then(() => {
   // 初期グループを設定
   currentGroupId = config.groups?.[0]?.id ?? null;
   console.log('[main] 初期グループ:', currentGroupId);
+
+  // Phase 14: streamingTTS 初期値を config.json から読み込む
+  if (config.streamingTTS != null) {
+    streamingTTSEnabled = !!config.streamingTTS;
+  }
+  console.log('[main] streamingTTS:', streamingTTSEnabled);
 
   setupIPC(config);
   setupShortcut(config);

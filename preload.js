@@ -97,6 +97,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveSoundDelay: (modelPath, pattern, value) =>
     ipcRenderer.invoke('ctrl-save-sound-delay', modelPath, pattern, value),
 
+  // ── Phase 14: streamingTTS ────────────────────────────────
+  getStreamingTTS: () => ipcRenderer.invoke('ctrl-get-streaming-tts'),
+  setStreamingTTS: (enabled) => ipcRenderer.invoke('ctrl-set-streaming-tts', enabled),
+
   // ── 共通 ────────────────────────────────────────────────────
   getConfig: () => ipcRenderer.invoke('get-config'),
 });

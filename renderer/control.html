@@ -213,6 +213,18 @@
       </div>
     </div>
 
+    <!-- Phase 14: ストリーミングTTSトグル -->
+    <div class="section">
+      <div class="section-label">ストリーミング逐次読み上げ</div>
+      <div class="btn-row">
+        <button id="streaming-tts-btn" class="btn">🔄 逐次読み上げ ON</button>
+      </div>
+      <div style="font-size:11px; color:#585b70; margin-top:4px; line-height:1.5;">
+        ON: AIの文章を句点ごとに逐次送信（ラグ短縮）<br>
+        OFF: ストリーミング完了後に全文を一括送信（従来方式）
+      </div>
+    </div>
+
     <div class="section">
       <div class="section-label">カメラプリセット（保存）</div>
       <div class="preset-save-row">
@@ -395,6 +407,35 @@
         });
       });
       updatePinBtn();
+
+      // ─── Phase 14: ストリーミングTTSトグル ──────────────────
+      var streamingTtsBtn = document.getElementById('streaming-tts-btn');
+      var streamingTtsOn  = true;
+
+      function updateStreamingBtn() {
+        if (streamingTtsOn) {
+          streamingTtsBtn.textContent = '🔄 逐次読み上げ ON';
+          streamingTtsBtn.className   = 'btn active';
+        } else {
+          streamingTtsBtn.textContent = '🔄 逐次読み上げ OFF';
+          streamingTtsBtn.className   = 'btn';
+        }
+      }
+      streamingTtsBtn.addEventListener('click', function() {
+        streamingTtsOn = !streamingTtsOn;
+        api.setStreamingTTS(streamingTtsOn).then(function(next) {
+          streamingTtsOn = next;
+          updateStreamingBtn();
+          setStatus('逐次読み上げ: ' + (next ? 'ON（句点ごとに送信）' : 'OFF（全文受信）'));
+          setTimeout(function() { setStatus(''); }, 2500);
+        });
+      });
+      // 起動時に現在の状態を取得
+      api.getStreamingTTS().then(function(state) {
+        streamingTtsOn = state;
+        updateStreamingBtn();
+      }).catch(function() { updateStreamingBtn(); });
+
 
       // ─── DOM受信トグル ───────────────────────────────────────
       function updateDomBtn() {
