@@ -79,6 +79,18 @@ function mergeGaze(modelGaze) {
   return { ...(configCache.gaze ?? {}), ...(modelGaze ?? {}) };
 }
 
+// Phase 13-5 bugfix: グローバル lighting をベースに、モデル個別 lighting で上書きしてマージ
+function mergeLighting(modelConf) {
+  const g = configCache.lighting ?? {};
+  const m = modelConf?.lighting  ?? {};
+  return {
+    ambient: { ...g.ambient, ...m.ambient },
+    main:    { ...g.main,    ...m.main    },
+    shadow:  { ...g.shadow                }, // shadow はグローバルのみ
+    mtoon:   { ...g.mtoon,   ...m.mtoon   },
+  };
+}
+
 // idleMotion はグローバル設定をそのまま使う（モデル個別設定は現時点では無し）
 function getIdleMotionConfig() {
   return configCache.idleMotion ?? {};
@@ -123,7 +135,8 @@ api.onSwitchModel(async ({ path: modelPath, modelConf }) => {
       configCache.blink    ?? {},
       mergeGaze(modelConf?.gaze),
       getIdleMotionConfig(),
-      getRestPoseConfig(modelConf)
+      getRestPoseConfig(modelConf),
+      mergeLighting(modelConf)
     );
     setStatus('');
   } catch (e) { setStatus(`エラー: ${e.message}`); }
@@ -199,7 +212,8 @@ async function _runEntrance(modelPath, modelConf, patternKey, label) {
       configCache.blink   ?? {},
       mergeGaze(modelConf?.gaze),
       getIdleMotionConfig(),
-      getRestPoseConfig(modelConf)
+      getRestPoseConfig(modelConf),
+      mergeLighting(modelConf)
     );
   } catch (e) {
     console.error(`[vrm-win] 登場演出${label}: switchVRM失敗:`, e);
@@ -256,7 +270,8 @@ api.onEntranceC(({ path: modelPath, modelConf, randomMotion, randomSound }) => {
         configCache.blink   ?? {},
         mergeGaze(modelConf?.gaze),
         getIdleMotionConfig(),
-        getRestPoseConfig(modelConf)
+        getRestPoseConfig(modelConf),
+        mergeLighting(modelConf)
       );
     } catch (e) {
       console.error('[vrm-win] 登場演出C: switchVRM失敗:', e);

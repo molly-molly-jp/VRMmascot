@@ -34,8 +34,10 @@ function saveConfig(config) {
     const configPath = path.join(__dirname, 'config.json');
     fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
     console.log('[main] config.json 保存完了');
+    return true;
   } catch (e) {
     console.error('[main] config.json 保存失敗:', e.message);
+    return false;
   }
 }
 
@@ -408,6 +410,11 @@ function setupIPC(config) {
   // ── Phase 13-5: ライティング 保存（config.json書き込み）─────
   ipcMain.handle('ctrl-save-lighting', (_, modelPath, params) => {
     const modelConf = ensureModelInConfig(config, modelPath);
+    // ensureModelInConfig がモデルを見つけられなかった場合は空オブジェクトが返る
+    if (!modelConf || !modelConf.path) {
+      console.error('[main] ctrl-save-lighting: モデルが config に見つかりません:', modelPath);
+      return { ok: false, reason: 'model_not_found' };
+    }
     if (!modelConf.lighting)         modelConf.lighting         = {};
     if (!modelConf.lighting.ambient) modelConf.lighting.ambient  = {};
     if (!modelConf.lighting.main)    modelConf.lighting.main     = {};
@@ -416,9 +423,9 @@ function setupIPC(config) {
     if (params.mainIntensity     != null) modelConf.lighting.main.intensity         = params.mainIntensity;
     if (params.mainX             != null) modelConf.lighting.main.x                 = params.mainX;
     if (params.shadingShiftFactor != null) modelConf.lighting.mtoon.shadingShiftFactor = params.shadingShiftFactor;
-    saveConfig(config);
-    console.log('[main] lighting保存(config.json):', params);
-    return { ok: true };
+    console.log('[main] lighting保存対象モデル:', modelConf.path, '| lighting:', JSON.stringify(modelConf.lighting));
+    const saved = saveConfig(config);
+    return { ok: saved };
   });
 
   // ── Phase 13-5: モデルの有効ライティング設定を返す ──────────

@@ -858,7 +858,7 @@ export function setLighting({ mainX, mainIntensity, ambientIntensity, shadingShi
   console.log('[VRM] setLighting →', { mainX, mainIntensity, ambientIntensity, shadingShiftFactor });
 }
 
-export async function switchVRM(vrmPath, lipsyncConfig = {}, blinkConfig = {}, gazeConfig = {}, idleMotionConfig = {}, restPoseConfig = {}) {
+export async function switchVRM(vrmPath, lipsyncConfig = {}, blinkConfig = {}, gazeConfig = {}, idleMotionConfig = {}, restPoseConfig = {}, lightingCfg = null) {
   console.log('[VRM] モデル切り替え:', vrmPath);
   // VRMA再生中なら停止
   if (currentMixer) {
@@ -882,6 +882,21 @@ export async function switchVRM(vrmPath, lipsyncConfig = {}, blinkConfig = {}, g
   const vrm = await loadVRM(vrmPath);
   scene.add(vrm.scene);
   currentVRM = vrm;
+
+  // Phase 13-5 bugfix: モデル個別ライティングをシーンに適用してから MToon を設定する
+  if (lightingCfg != null) {
+    currentLightingCfg = lightingCfg;
+    if (ambientLight && lightingCfg?.ambient?.intensity != null) {
+      ambientLight.intensity = lightingCfg.ambient.intensity;
+    }
+    if (dirLight) {
+      if (lightingCfg?.main?.intensity != null) dirLight.intensity = lightingCfg.main.intensity;
+      if (lightingCfg?.main?.x        != null) dirLight.position.setX(lightingCfg.main.x);
+      if (lightingCfg?.main?.y        != null) dirLight.position.setY(lightingCfg.main.y);
+      if (lightingCfg?.main?.z        != null) dirLight.position.setZ(lightingCfg.main.z);
+    }
+    console.log('[VRM] モデル個別ライティング適用:', lightingCfg);
+  }
   applyMtoonSettings(vrm, currentLightingCfg?.mtoon ?? {});
   lipSyncExpressionName = resolveLipSyncExpression(vrm);
   lipSyncSensitivity    = lipsyncConfig.sensitivity  ?? 1.0;
