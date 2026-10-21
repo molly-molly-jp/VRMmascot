@@ -1,6 +1,6 @@
 {
   "shortcutKey": "Ctrl+Q",
-  "streamingTTS": false,
+  "streamingTTS": true,
   "lighting": {
     "ambient": {
       "intensity": 0.5
@@ -32,33 +32,33 @@
     "presets": [
       {
         "label": "プリセット1",
-        "targetX": 0.016000041971700893,
-        "targetY": 1.1045064851525437,
-        "distance": 4.444572926783093,
-        "rotX": -0.025000000000000005,
-        "rotY": -0.02000000000000014,
-        "windowX": -121,
-        "windowY": 26
+        "targetX": -0.11599965903830495,
+        "targetY": 1.4055047904703977,
+        "distance": 6.971929413774463,
+        "rotX": -0.04999999999999975,
+        "rotY": -0.23500000000000182,
+        "windowX": -772,
+        "windowY": -832
       },
       {
         "label": "プリセット2",
-        "targetX": 0.016000041971700893,
-        "targetY": 1.1045064851525437,
-        "distance": 2.3445728820296603,
-        "rotX": -0.025000000000000005,
-        "rotY": -0.02000000000000014,
-        "windowX": 293,
-        "windowY": 10
+        "targetX": -0.11599965903830495,
+        "targetY": 1.4055047904703977,
+        "distance": 2.7719294137744654,
+        "rotX": -0.05499999999999975,
+        "rotY": 0.15499999999999828,
+        "windowX": -72,
+        "windowY": -888
       },
       {
         "label": "プリセット3",
-        "targetX": 0.012000340961695024,
-        "targetY": 1.2055047904703975,
-        "distance": 0.6719294137744658,
-        "rotX": 0.05000000000000002,
-        "rotY": -0.23000000000000198,
-        "windowX": 150,
-        "windowY": 7
+        "targetX": -0.11599965903830495,
+        "targetY": 1.4055047904703977,
+        "distance": 5.471929413774464,
+        "rotX": -0.05499999999999975,
+        "rotY": 0.15499999999999828,
+        "windowX": 590,
+        "windowY": -826
       }
     ]
   },
@@ -460,11 +460,11 @@
           },
           "lighting": {
             "ambient": {
-              "intensity": 0.65
+              "intensity": 0.7
             },
             "main": {
-              "intensity": 1.25,
-              "x": 1.2
+              "intensity": 1.2,
+              "x": 1.6
             },
             "mtoon": {
               "shadingShiftFactor": -0.15

@@ -707,6 +707,18 @@ function initScene(canvas, lightingCfg = {}) {
   camera = new THREE.PerspectiveCamera(30, W / H, 0.1, 20);
   camera.position.set(0, 1.3, 3.0);
   camera.lookAt(0, 1.3, 0);
+
+  // ウィンドウサイズ変更にcanvas・カメラを追従させる（サイズが実際に変わった時だけ）
+  window.addEventListener('resize', () => {
+    const w = window.innerWidth, h = window.innerHeight;
+    if (!w || !h) return;
+    if (w === parseInt(canvas.style.width, 10) && h === parseInt(canvas.style.height, 10)) return;
+    canvas.style.width  = `${w}px`;
+    canvas.style.height = `${h}px`;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  });
 }
 
 async function loadVRM(vrmPath) {
@@ -721,14 +733,23 @@ async function loadVRM(vrmPath) {
   return vrm;
 }
 
+// 自動フレーミングの設定（config.json の camera.autoFit）。未指定はデフォルト値
+let autoFitDistanceScale = 2.4;
+let autoFitTargetOffsetY = 0.0;
+
+export function setAutoFitConfig(cfg) {
+  autoFitDistanceScale = cfg?.distanceScale ?? 2.4;
+  autoFitTargetOffsetY = cfg?.targetOffsetY ?? 0.0;
+}
+
 function adjustCamera(vrm) {
   const box    = new THREE.Box3().setFromObject(vrm.scene);
   const size   = box.getSize(new THREE.Vector3());
   const center = box.getCenter(new THREE.Vector3());
   // orbit 初期値をモデルのバウンディングボックスから計算して設定
   orbitTargetX  = center.x;
-  orbitTargetY  = center.y + size.y * 0.1;
-  orbitDistance = size.y * 1.8;
+  orbitTargetY  = center.y + size.y * autoFitTargetOffsetY;
+  orbitDistance = size.y * autoFitDistanceScale;
   orbitRotX     = 0.0;
   orbitRotY     = 0.0;
   camera.aspect = window.innerWidth / window.innerHeight;

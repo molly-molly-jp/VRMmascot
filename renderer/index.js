@@ -2,7 +2,7 @@
 import { initSceneOnly, initVRM, switchVRM, playMotion, getAlphaAtPixel,
          setCameraEnabled, getCameraOrbit, setCameraOrbit,
          updateCameraOrbit, updateCameraZoom, updateCameraTarget,
-         setExpression, setLipsync, setLighting } from './vrm.js';
+         setExpression, setLipsync, setLighting, setAutoFitConfig } from './vrm.js';
 import { speak, stopCurrentSpeech, setSpeakerId } from './voicevox.js';
 import { askAI } from './ai.js';
 import { setupVBCableAnalyser, teardownVBCable } from './lipsync.js';
@@ -326,6 +326,7 @@ api.onSetCameraOrbit((data) => {
 // ─── 起動 ─────────────────────────────────────────────────────
 async function main() {
   configCache = await api.getConfig();
+  setAutoFitConfig(configCache.camera?.autoFit);
   const firstGroup = configCache.groups?.[0];
 
   if (firstGroup) await applyGroupSettings(firstGroup).catch(console.error);

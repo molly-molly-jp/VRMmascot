@@ -98,9 +98,11 @@ function ensureModelInConfig(config, modelPath) {
 }
 
 function createVRMWindow() {
+  // 全身アバターが切れないよう大きめにし、作業領域（タスクバー除く）を超えないよう制限する
+  const wa = screen.getPrimaryDisplay().workAreaSize;
   vrmWin = new BrowserWindow({
-    width: 400,
-    height: 600,
+    width: Math.min(600, wa.width),
+    height: Math.min(1000, wa.height),
     resizable: true,
     transparent: true,
     backgroundColor: '#00000000',
@@ -113,11 +115,13 @@ function createVRMWindow() {
       webSecurity: false,
     },
   });
-  vrmWin.loadFile(path.join(__dirname, 'renderer', 'index.html'));
-  // Phase 12-1 デバッグ用: 起動時にDevToolsを自動で開く（確認後は削除してOK）
-  vrmWin.webContents.once('did-finish-load', () => {
-    vrmWin.webContents.openDevTools({ mode: 'detach' });
+  // 他のウィンドウ（Claude Desktop・ブラウザ等）に隠れないよう最前面レベルを上げる
+  // 'screen-saver' は通常の alwaysOnTop より上のz-orderになる。blur時にも再設定する
+  vrmWin.setAlwaysOnTop(true, 'screen-saver');
+  vrmWin.on('blur', () => {
+    if (vrmWin && !vrmWin.isDestroyed()) vrmWin.setAlwaysOnTop(true, 'screen-saver');
   });
+  vrmWin.loadFile(path.join(__dirname, 'renderer', 'index.html'));
   vrmWin.webContents.on('will-navigate', (e) => e.preventDefault());
   vrmWin.webContents.on('will-redirect',  (e) => e.preventDefault());
 
