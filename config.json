@@ -1,6 +1,6 @@
 {
   "shortcutKey": "Ctrl+Q",
-  "streamingTTS": true,
+  "streamingTTS": false,
   "lighting": {
     "ambient": {
       "intensity": 0.5
